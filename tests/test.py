@@ -6,14 +6,12 @@ class TestProver(unittest.TestCase):
     def test_prover_1(self):
         p = Proposition("p")
         q = Proposition("q")
-        propositions = (p, q)
         assumptions = (
             p,
-            p % q,
+            p / q,
         )
 
         proof, truth = Prover(
-            propositions,
             assumptions,
             q,
         ).prove()
