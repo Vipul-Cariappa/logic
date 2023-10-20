@@ -17,6 +17,14 @@ class Statement(ABC):
     def simplify(self) -> StatementT:
         pass
 
+    @abstractmethod
+    def extract(self) -> list[PropositionT]:
+        pass
+
+    @abstractmethod
+    def __contains__(self, key: Any) -> bool:
+        pass
+
     def __and__(self, other: Any) -> CompositePropositionT:
         if not isinstance(other, Statement):
             raise TypeError(
@@ -60,8 +68,22 @@ class Proposition(Statement):
     def simplify(self) -> StatementT:
         return copy(self)
 
+    def extract(self) -> list[PropositionT]:
+        return [self]
+
     def __str__(self) -> str:
         return self.statement
+
+    def __contains__(self, key: Any) -> bool:
+        if not isinstance(key, Statement):
+            raise TypeError(
+                f"Cannot perform in operation of {type(self)} with {type(key)}"
+            )
+
+        if isinstance(key, Proposition):
+            return self == key
+
+        return False
 
     def __eq__(self, other: Any) -> bool:
         if not isinstance(other, Statement):
@@ -89,8 +111,19 @@ class CompositePropositionAND(CompositeProposition):
             self.first.remove_conditionals(), self.second.remove_conditionals()
         )
 
+    def extract(self) -> list[PropositionT]:
+        return [*self.first.extract(), *self.second.extract()]
+
     def __str__(self) -> str:
         return f"({self.first} ∧ {self.second})"
+
+    def __contains__(self, key: Any) -> bool:
+        if not isinstance(key, Statement):
+            raise TypeError(
+                f"Cannot perform in operation of {type(self)} with {type(key)}"
+            )
+
+        return key in self.first or key in self.second or key == self
 
     def __eq__(self, other: Any) -> bool:
         if not isinstance(other, Statement):
@@ -114,8 +147,19 @@ class CompositePropositionOR(CompositeProposition):
             self.first.remove_conditionals(), self.second.remove_conditionals()
         )
 
+    def extract(self) -> list[PropositionT]:
+        return [*self.first.extract(), *self.second.extract()]
+
     def __str__(self) -> str:
         return f"({self.first} ∨ {self.second})"
+
+    def __contains__(self, key: Any) -> bool:
+        if not isinstance(key, Statement):
+            raise TypeError(
+                f"Cannot perform in operation of {type(self)} with {type(key)}"
+            )
+
+        return key in self.first or key in self.second or key == self
 
     def __eq__(self, other: Any) -> bool:
         if not isinstance(other, Statement):
@@ -136,8 +180,19 @@ class CompositePropositionNOT(CompositeProposition):
     def remove_conditionals(self) -> StatementT:
         return CompositePropositionNOT(self.statement.remove_conditionals())
 
+    def extract(self) -> list[PropositionT]:
+        return [*self.statement.extract()]
+
     def __str__(self) -> str:
         return f"¬ ({self.statement})"
+
+    def __contains__(self, key: Any) -> bool:
+        if not isinstance(key, Statement):
+            raise TypeError(
+                f"Cannot perform in operation of {type(self)} with {type(key)}"
+            )
+
+        return key in self.statement or key == self
 
     def __eq__(self, other: Any) -> bool:
         if not isinstance(other, Statement):
@@ -160,8 +215,25 @@ class CompositePropositionCONDITIONAL(CompositeProposition):
             | self.conclusion.remove_conditionals()
         )
 
+    def extract(self) -> list[PropositionT]:
+        return [*self.assumption.extract(), *self.conclusion.extract()]
+
     def __str__(self) -> str:
         return f"(({self.assumption}) → ({self.conclusion}))"
+
+    def __contains__(self, key: Any) -> bool:
+        if not isinstance(key, Statement):
+            raise TypeError(
+                f"Cannot perform in operation of {type(self)} with {type(key)}"
+            )
+
+        return (
+            key in self.assumption
+            or key in self.conclusion
+            or key == self
+            or key == self.assumption
+            or key == self.conclusion
+        )
 
     def __eq__(self, other: Any) -> bool:
         if not isinstance(other, Statement):
@@ -186,8 +258,25 @@ class CompositePropositionBICONDITIONAL(CompositeProposition):
             self.conclusion / self.assumption
         ).remove_conditionals()
 
+    def extract(self) -> list[PropositionT]:
+        return [*self.assumption.extract(), *self.conclusion.extract()]
+
     def __str__(self) -> str:
         return f"(({self.assumption}) ↔ ({self.conclusion}))"
+
+    def __contains__(self, key: Any) -> bool:
+        if not isinstance(key, Statement):
+            raise TypeError(
+                f"Cannot perform in operation of {type(self)} with {type(key)}"
+            )
+
+        return (
+            key in self.assumption
+            or key in self.conclusion
+            or key == self
+            or key == self.assumption
+            or key == self.conclusion
+        )
 
     def __eq__(self, other: Any) -> bool:
         if not isinstance(other, Statement):
