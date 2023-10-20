@@ -9,7 +9,7 @@ class TestProver(unittest.TestCase):
         propositions = (p, q)
         assumptions = (
             p,
-            p >> q,
+            p % q,
         )
 
         proof, truth = Prover(

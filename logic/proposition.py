@@ -27,7 +27,7 @@ class Statement(ABC):
     def __or__(self, other: Any) -> CompositePropositionT:
         if not isinstance(other, Statement):
             raise TypeError(
-                f"Cannot perform logical and of {type(self)} with {type(other)}"
+                f"Cannot perform logical or of {type(self)} with {type(other)}"
             )
         return CompositePropositionOR(self, other)
 
@@ -37,14 +37,14 @@ class Statement(ABC):
     def __truediv__(self, other: Any) -> CompositePropositionT:
         if not isinstance(other, Statement):
             raise TypeError(
-                f"Cannot perform logical and of {type(self)} with {type(other)}"
+                f"Cannot perform logical imply of {type(self)} with {type(other)}"
             )
         return CompositePropositionCONDITIONAL(self, other)
 
     def __mod__(self, other: Any) -> CompositePropositionT:
         if not isinstance(other, Statement):
             raise TypeError(
-                f"Cannot perform logical and of {type(self)} with {type(other)}"
+                f"Cannot perform logical bi-conditional of {type(self)} with {type(other)}"
             )
         return CompositePropositionBICONDITIONAL(self, other)
 
@@ -62,6 +62,15 @@ class Proposition(Statement):
 
     def __str__(self) -> str:
         return self.statement
+
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, Statement):
+            raise TypeError(f"Cannot compare {type(self)} with {type(other)}")
+
+        if isinstance(other, Proposition):
+            return self.variable == other.variable
+
+        return False
 
 
 class CompositeProposition(Statement):
@@ -83,6 +92,17 @@ class CompositePropositionAND(CompositeProposition):
     def __str__(self) -> str:
         return f"({self.first} ∧ {self.second})"
 
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, Statement):
+            raise TypeError(f"Cannot compare {type(self)} with {type(other)}")
+
+        if isinstance(other, CompositePropositionAND):
+            return (self.first == other.first and self.second == other.second) or (
+                self.first == other.second and self.second == other.first
+            )
+
+        return False
+
 
 class CompositePropositionOR(CompositeProposition):
     def __init__(self, first: Statement, second: Statement) -> None:
@@ -97,6 +117,17 @@ class CompositePropositionOR(CompositeProposition):
     def __str__(self) -> str:
         return f"({self.first} ∨ {self.second})"
 
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, Statement):
+            raise TypeError(f"Cannot compare {type(self)} with {type(other)}")
+
+        if isinstance(other, CompositePropositionOR):
+            return (self.first == other.first and self.second == other.second) or (
+                self.first == other.second and self.second == other.first
+            )
+
+        return False
+
 
 class CompositePropositionNOT(CompositeProposition):
     def __init__(self, statement: Statement) -> None:
@@ -107,6 +138,15 @@ class CompositePropositionNOT(CompositeProposition):
 
     def __str__(self) -> str:
         return f"¬ ({self.statement})"
+
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, Statement):
+            raise TypeError(f"Cannot compare {type(self)} with {type(other)}")
+
+        if isinstance(other, CompositePropositionNOT):
+            return self.statement == other.statement
+
+        return False
 
 
 class CompositePropositionCONDITIONAL(CompositeProposition):
@@ -123,6 +163,18 @@ class CompositePropositionCONDITIONAL(CompositeProposition):
     def __str__(self) -> str:
         return f"(({self.assumption}) → ({self.conclusion}))"
 
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, Statement):
+            raise TypeError(f"Cannot compare {type(self)} with {type(other)}")
+
+        if isinstance(other, CompositePropositionCONDITIONAL):
+            return (
+                self.assumption == other.assumption
+                and self.conclusion == other.conclusion
+            )
+
+        return False
+
 
 class CompositePropositionBICONDITIONAL(CompositeProposition):
     def __init__(self, assumption: Statement, conclusion: Statement) -> None:
@@ -136,3 +188,15 @@ class CompositePropositionBICONDITIONAL(CompositeProposition):
 
     def __str__(self) -> str:
         return f"(({self.assumption}) ↔ ({self.conclusion}))"
+
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, Statement):
+            raise TypeError(f"Cannot compare {type(self)} with {type(other)}")
+
+        if isinstance(other, CompositePropositionCONDITIONAL):
+            return (
+                self.assumption == other.assumption
+                and self.conclusion == other.conclusion
+            )
+
+        return False
