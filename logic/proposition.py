@@ -2,12 +2,14 @@ from typing import Self, Any, TypeAlias
 from copy import copy
 from abc import ABC, abstractmethod
 from warnings import warn
+from dataclasses import dataclass
 
 PropositionT: TypeAlias = "Proposition"
 CompositePropositionT: TypeAlias = "CompositeProposition"
 StatementT: TypeAlias = "Statement"
 
 
+@dataclass(frozen=True)
 class Statement(ABC):
     @abstractmethod
     def remove_conditionals(self) -> StatementT:
@@ -27,40 +29,34 @@ class Statement(ABC):
 
     def __and__(self, other: Any) -> CompositePropositionT:
         if not isinstance(other, Statement):
-            raise TypeError(
-                f"Cannot perform logical and of {type(self)} with {type(other)}"
-            )
+            raise TypeError(f"Cannot perform logical and of {type(self)} with {type(other)}")
         return CompositePropositionAND(self, other)
 
     def __or__(self, other: Any) -> CompositePropositionT:
         if not isinstance(other, Statement):
-            raise TypeError(
-                f"Cannot perform logical or of {type(self)} with {type(other)}"
-            )
+            raise TypeError(f"Cannot perform logical or of {type(self)} with {type(other)}")
         return CompositePropositionOR(self, other)
 
     def __invert__(self) -> CompositePropositionT:
+        if isinstance(self, CompositePropositionNOT):
+            return copy(self.statement)
         return CompositePropositionNOT(self)
 
     def __truediv__(self, other: Any) -> CompositePropositionT:
         if not isinstance(other, Statement):
-            raise TypeError(
-                f"Cannot perform logical imply of {type(self)} with {type(other)}"
-            )
+            raise TypeError(f"Cannot perform logical imply of {type(self)} with {type(other)}")
         return CompositePropositionCONDITIONAL(self, other)
 
     def __mod__(self, other: Any) -> CompositePropositionT:
         if not isinstance(other, Statement):
-            raise TypeError(
-                f"Cannot perform logical bi-conditional of {type(self)} with {type(other)}"
-            )
+            raise TypeError(f"Cannot perform logical bi-conditional of {type(self)} with {type(other)}")
         return CompositePropositionBICONDITIONAL(self, other)
 
 
+@dataclass(frozen=True)
 class Proposition(Statement):
-    def __init__(self, variable: str, statement: None | str = None) -> None:
-        self.variable = variable
-        self.statement = statement if statement else variable
+    variable: str
+    statement: str = ""
 
     def remove_conditionals(self) -> StatementT:
         return copy(self)
@@ -72,13 +68,11 @@ class Proposition(Statement):
         return [self]
 
     def __str__(self) -> str:
-        return self.statement
+        return self.statement if self.statement else self.variable
 
     def __contains__(self, key: Any) -> bool:
         if not isinstance(key, Statement):
-            raise TypeError(
-                f"Cannot perform in operation of {type(self)} with {type(key)}"
-            )
+            raise TypeError(f"Cannot perform in operation of {type(self)} with {type(key)}")
 
         if isinstance(key, Proposition):
             return self == key
@@ -95,21 +89,20 @@ class Proposition(Statement):
         return False
 
 
+@dataclass(frozen=True)
 class CompositeProposition(Statement):
     def simplify(self) -> StatementT:
         warn("Not Implemented")
         return copy(self)
 
 
+@dataclass(frozen=True)
 class CompositePropositionAND(CompositeProposition):
-    def __init__(self, first: Statement, second: Statement) -> None:
-        self.first = first
-        self.second = second
+    first: Statement
+    second: Statement
 
     def remove_conditionals(self) -> StatementT:
-        return CompositePropositionAND(
-            self.first.remove_conditionals(), self.second.remove_conditionals()
-        )
+        return CompositePropositionAND(self.first.remove_conditionals(), self.second.remove_conditionals())
 
     def extract(self) -> list[PropositionT]:
         return [*self.first.extract(), *self.second.extract()]
@@ -119,9 +112,7 @@ class CompositePropositionAND(CompositeProposition):
 
     def __contains__(self, key: Any) -> bool:
         if not isinstance(key, Statement):
-            raise TypeError(
-                f"Cannot perform in operation of {type(self)} with {type(key)}"
-            )
+            raise TypeError(f"Cannot perform in operation of {type(self)} with {type(key)}")
 
         return key in self.first or key in self.second or key == self
 
@@ -137,15 +128,13 @@ class CompositePropositionAND(CompositeProposition):
         return False
 
 
+@dataclass(frozen=True)
 class CompositePropositionOR(CompositeProposition):
-    def __init__(self, first: Statement, second: Statement) -> None:
-        self.first = first
-        self.second = second
+    first: Statement
+    second: Statement
 
     def remove_conditionals(self) -> StatementT:
-        return CompositePropositionOR(
-            self.first.remove_conditionals(), self.second.remove_conditionals()
-        )
+        return CompositePropositionOR(self.first.remove_conditionals(), self.second.remove_conditionals())
 
     def extract(self) -> list[PropositionT]:
         return [*self.first.extract(), *self.second.extract()]
@@ -155,9 +144,7 @@ class CompositePropositionOR(CompositeProposition):
 
     def __contains__(self, key: Any) -> bool:
         if not isinstance(key, Statement):
-            raise TypeError(
-                f"Cannot perform in operation of {type(self)} with {type(key)}"
-            )
+            raise TypeError(f"Cannot perform in operation of {type(self)} with {type(key)}")
 
         return key in self.first or key in self.second or key == self
 
@@ -173,9 +160,9 @@ class CompositePropositionOR(CompositeProposition):
         return False
 
 
+@dataclass(frozen=True)
 class CompositePropositionNOT(CompositeProposition):
-    def __init__(self, statement: Statement) -> None:
-        self.statement = statement
+    statement: Statement
 
     def remove_conditionals(self) -> StatementT:
         return CompositePropositionNOT(self.statement.remove_conditionals())
@@ -188,9 +175,7 @@ class CompositePropositionNOT(CompositeProposition):
 
     def __contains__(self, key: Any) -> bool:
         if not isinstance(key, Statement):
-            raise TypeError(
-                f"Cannot perform in operation of {type(self)} with {type(key)}"
-            )
+            raise TypeError(f"Cannot perform in operation of {type(self)} with {type(key)}")
 
         return key in self.statement or key == self
 
@@ -199,21 +184,20 @@ class CompositePropositionNOT(CompositeProposition):
             raise TypeError(f"Cannot compare {type(self)} with {type(other)}")
 
         if isinstance(other, CompositePropositionNOT):
+            # FIXME: this should be part of the proof
+            #  By Equivalence of ~(~x) <-> x
             return self.statement == other.statement
 
         return False
 
 
+@dataclass(frozen=True)
 class CompositePropositionCONDITIONAL(CompositeProposition):
-    def __init__(self, assumption: Statement, conclusion: Statement) -> None:
-        self.assumption = assumption
-        self.conclusion = conclusion
+    assumption: Statement
+    conclusion: Statement
 
     def remove_conditionals(self) -> StatementT:
-        return (
-            ~self.assumption.remove_conditionals()
-            | self.conclusion.remove_conditionals()
-        )
+        return ~self.assumption.remove_conditionals() | self.conclusion.remove_conditionals()
 
     def extract(self) -> list[PropositionT]:
         return [*self.assumption.extract(), *self.conclusion.extract()]
@@ -223,9 +207,7 @@ class CompositePropositionCONDITIONAL(CompositeProposition):
 
     def __contains__(self, key: Any) -> bool:
         if not isinstance(key, Statement):
-            raise TypeError(
-                f"Cannot perform in operation of {type(self)} with {type(key)}"
-            )
+            raise TypeError(f"Cannot perform in operation of {type(self)} with {type(key)}")
 
         return (
             key in self.assumption
@@ -240,18 +222,15 @@ class CompositePropositionCONDITIONAL(CompositeProposition):
             raise TypeError(f"Cannot compare {type(self)} with {type(other)}")
 
         if isinstance(other, CompositePropositionCONDITIONAL):
-            return (
-                self.assumption == other.assumption
-                and self.conclusion == other.conclusion
-            )
+            return self.assumption == other.assumption and self.conclusion == other.conclusion
 
         return False
 
 
+@dataclass(frozen=True)
 class CompositePropositionBICONDITIONAL(CompositeProposition):
-    def __init__(self, assumption: Statement, conclusion: Statement) -> None:
-        self.assumption = assumption
-        self.conclusion = conclusion
+    assumption: Statement
+    conclusion: Statement
 
     def remove_conditionals(self) -> StatementT:
         return (self.assumption / self.conclusion).remove_conditionals() & (
@@ -266,9 +245,7 @@ class CompositePropositionBICONDITIONAL(CompositeProposition):
 
     def __contains__(self, key: Any) -> bool:
         if not isinstance(key, Statement):
-            raise TypeError(
-                f"Cannot perform in operation of {type(self)} with {type(key)}"
-            )
+            raise TypeError(f"Cannot perform in operation of {type(self)} with {type(key)}")
 
         return (
             key in self.assumption
@@ -282,10 +259,7 @@ class CompositePropositionBICONDITIONAL(CompositeProposition):
         if not isinstance(other, Statement):
             raise TypeError(f"Cannot compare {type(self)} with {type(other)}")
 
-        if isinstance(other, CompositePropositionCONDITIONAL):
-            return (
-                self.assumption == other.assumption
-                and self.conclusion == other.conclusion
-            )
+        if isinstance(other, CompositePropositionBICONDITIONAL):
+            return self.assumption == other.assumption and self.conclusion == other.conclusion
 
         return False
