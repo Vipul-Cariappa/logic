@@ -1,4 +1,4 @@
-from typing import Self, Any, TypeAlias
+from typing import Any, TypeAlias
 from copy import copy
 from abc import ABC, abstractmethod
 from warnings import warn
@@ -27,27 +27,27 @@ class Statement(ABC):
     def __contains__(self, key: Any) -> bool:
         pass
 
-    def __and__(self, other: Any) -> CompositePropositionT:
+    def __and__(self, other: Any) -> StatementT:
         if not isinstance(other, Statement):
             raise TypeError(f"Cannot perform logical and of {type(self)} with {type(other)}")
         return CompositePropositionAND(self, other)
 
-    def __or__(self, other: Any) -> CompositePropositionT:
+    def __or__(self, other: Any) -> StatementT:
         if not isinstance(other, Statement):
             raise TypeError(f"Cannot perform logical or of {type(self)} with {type(other)}")
         return CompositePropositionOR(self, other)
 
-    def __invert__(self) -> CompositePropositionT:
+    def __invert__(self) -> StatementT:
         if isinstance(self, CompositePropositionNOT):
             return copy(self.statement)
         return CompositePropositionNOT(self)
 
-    def __truediv__(self, other: Any) -> CompositePropositionT:
+    def __truediv__(self, other: Any) -> StatementT:
         if not isinstance(other, Statement):
             raise TypeError(f"Cannot perform logical imply of {type(self)} with {type(other)}")
         return CompositePropositionCONDITIONAL(self, other)
 
-    def __mod__(self, other: Any) -> CompositePropositionT:
+    def __mod__(self, other: Any) -> StatementT:
         if not isinstance(other, Statement):
             raise TypeError(f"Cannot perform logical bi-conditional of {type(self)} with {type(other)}")
         return CompositePropositionBICONDITIONAL(self, other)
