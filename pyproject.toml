@@ -1,0 +1,21 @@
+[project]
+name = "logic"
+version = "0.0.1"
+authors = [{ name = "Vipul Cariappa", email = "vipulcariappa@gmailcom" }]
+description = "Library to use and simulate propositional logic"
+readme = "README.md"
+requires-python = ">=3.10"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+license = { file = "LICENSE" }
+
+[project.urls]
+"Homepage" = "https://github.com/Vipul-Cariappa/logic"
+"Bug Tracker" = "https://github.com/Vipul-Cariappa/logic/issues"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
