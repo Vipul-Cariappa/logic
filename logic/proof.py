@@ -244,6 +244,20 @@ class Prover:
                             self.proof.add(RulesOfInference.Resolution, i)
                             self.proof.extend(proof)
                             return self.proof, True
+                        
+                    # Applying Disjunctive Syllogism
+                    if self.conclusion == first:
+                        proof, truth = Prover(self.assumptions.remove(i), ~second).prove()
+                        if truth:
+                            self.proof.extend(proof)
+                            self.proof.add(RulesOfInference.DisjunctiveSyllogism, i)
+                            return self.proof, True
+                    if self.conclusion == second:
+                        proof, truth = Prover(self.assumptions.remove(i), ~first).prove()
+                        if truth:
+                            self.proof.extend(proof)
+                            self.proof.add(RulesOfInference.DisjunctiveSyllogism, i)
+                            return self.proof, True
 
                     # Applying De'Morgen's Law
                     if isinstance(first, CompositePropositionNOT) and isinstance(second, CompositePropositionNOT):
@@ -280,21 +294,6 @@ class Prover:
                                 self.proof.add(RulesOfInference.DeMorgensLaw, i)
                                 self.proof.extend(proof)
                                 return self.proof, True
-
-                case CompositePropositionOR(first=first, second=second):
-                    # Applying Disjunctive Syllogism
-                    if self.conclusion == first:
-                        proof, truth = Prover(self.assumptions.remove(i), ~second).prove()
-                        if truth:
-                            self.proof.extend(proof)
-                            self.proof.add(RulesOfInference.DisjunctiveSyllogism, i)
-                            return self.proof, True
-                    if self.conclusion == second:
-                        proof, truth = Prover(self.assumptions.remove(i), ~first).prove()
-                        if truth:
-                            self.proof.extend(proof)
-                            self.proof.add(RulesOfInference.DisjunctiveSyllogism, i)
-                            return self.proof, True
 
                 case CompositePropositionBICONDITIONAL(assumption=assumption, conclusion=conclusion):
                     # Applying definition of Bi-Conditional
