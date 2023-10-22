@@ -1,9 +1,17 @@
-from typing import Sequence, Generator, Iterator, TypeAlias
-from .proposition import *
+from typing import Sequence, Generator, Iterator, TypeAlias, Any
+from .proposition import (
+    Statement,
+    CompositePropositionAND,
+    CompositePropositionNOT,
+    CompositePropositionOR,
+    CompositePropositionBICONDITIONAL,
+    CompositePropositionCONDITIONAL,
+)
 
 from enum import Enum
 
 AssumptionT: TypeAlias = "Assumption"
+ProofT: TypeAlias = "Proof"
 
 
 class RulesOfInference(Enum):
@@ -21,7 +29,7 @@ class RulesOfInference(Enum):
 
 
 class Assumption:
-    def __init__(self, assumptions: Sequence[Statement] | Self) -> None:
+    def __init__(self, assumptions: Sequence[Statement] | AssumptionT) -> None:
         if isinstance(assumptions, Assumption):
             self.assumptions: set[Statement] = set(assumptions.assumptions)
         else:
@@ -31,10 +39,10 @@ class Assumption:
         return key in self.assumptions
 
     def with_proposition(self, prop: Statement) -> Generator[Statement, None, None]:
-        l = prop.extract()
+        individual_propositions = prop.extract()
         for i in self.assumptions:
             yielded = False
-            for j in l:
+            for j in individual_propositions:
                 if j in i and not yielded:
                     yielded = True
                     yield i
@@ -56,7 +64,7 @@ class Proof:
     def add(self, roi: RulesOfInference, *statement: Statement) -> None:
         self.proof.append((roi, (*statement,)))
 
-    def extend(self, proof: Self) -> None:
+    def extend(self, proof: ProofT) -> None:
         self.proof.extend(proof.proof)
 
     def __iter__(self) -> Iterator[tuple[RulesOfInference, tuple[Statement, ...]]]:
@@ -244,7 +252,7 @@ class Prover:
                             self.proof.add(RulesOfInference.Resolution, i)
                             self.proof.extend(proof)
                             return self.proof, True
-                        
+
                     # Applying Disjunctive Syllogism
                     if self.conclusion == first:
                         proof, truth = Prover(self.assumptions.remove(i), ~second).prove()
