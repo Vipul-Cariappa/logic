@@ -404,7 +404,10 @@ class Prover:
                 case CompositePropositionBICONDITIONAL(assumption=assumption, conclusion=conclusion):
                     # Applying definition of Bi-Conditional
                     #  (p <-> q) -> (p -> q) & (q -> p)
-                    if IMPLY(assumption, conclusion) == self.conclusion or IMPLY(conclusion, assumption) == self.conclusion:
+                    if (
+                        IMPLY(assumption, conclusion) == self.conclusion
+                        or IMPLY(conclusion, assumption) == self.conclusion
+                    ):
                         self.proof.add(Equivalence.DefinitionOfBiConditional, i)
                         return self.proof, True
 
