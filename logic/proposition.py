@@ -42,16 +42,6 @@ class Statement(ABC):
             return copy(self.statement)
         return CompositePropositionNOT(self)
 
-    def __truediv__(self, other: Any) -> StatementT:
-        if not isinstance(other, Statement):
-            raise TypeError(f"Cannot perform logical imply of {type(self)} with {type(other)}")
-        return CompositePropositionCONDITIONAL(self, other)
-
-    def __mod__(self, other: Any) -> StatementT:
-        if not isinstance(other, Statement):
-            raise TypeError(f"Cannot perform logical bi-conditional of {type(self)} with {type(other)}")
-        return CompositePropositionBICONDITIONAL(self, other)
-
 
 @dataclass(frozen=True)
 class Proposition(Statement):
@@ -233,8 +223,8 @@ class CompositePropositionBICONDITIONAL(CompositeProposition):
     conclusion: Statement
 
     def remove_conditionals(self) -> StatementT:
-        return (self.assumption / self.conclusion).remove_conditionals() & (
-            self.conclusion / self.assumption
+        return (IMPLY(self.assumption, self.conclusion)).remove_conditionals() & (
+            IMPLY(self.conclusion, self.assumption)
         ).remove_conditionals()
 
     def extract(self) -> list[PropositionT]:
@@ -263,3 +253,29 @@ class CompositePropositionBICONDITIONAL(CompositeProposition):
             return self.assumption == other.assumption and self.conclusion == other.conclusion
 
         return False
+
+
+def AND(first: Statement, second: Statement, *others: Statement) -> CompositePropositionAND:
+    if len(others) == 0:
+        return CompositePropositionAND(first, second)
+
+    return CompositePropositionAND(first, AND(second, *others))
+
+
+def OR(first: Statement, second: Statement, *others: Statement) -> CompositePropositionOR:
+    if len(others) == 0:
+        return CompositePropositionOR(first, second)
+
+    return CompositePropositionOR(first, OR(second, *others))
+
+
+def NOT(statement: Statement) -> CompositePropositionNOT:
+    return CompositePropositionNOT(statement)
+
+
+def IMPLY(assumption: Statement, conclusion: Statement) -> CompositePropositionCONDITIONAL:
+    return CompositePropositionCONDITIONAL(assumption, conclusion)
+
+
+def IFF(assumption: Statement, conclusion: Statement) -> CompositePropositionBICONDITIONAL:
+    return CompositePropositionBICONDITIONAL(assumption, conclusion)

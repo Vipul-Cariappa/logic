@@ -177,3 +177,6 @@ pyrightconfig.json
 
 # vscode
 .vscode/
+
+# temparary folder
+tmp/

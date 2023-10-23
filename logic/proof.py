@@ -6,6 +6,7 @@ from .proposition import (
     CompositePropositionOR,
     CompositePropositionBICONDITIONAL,
     CompositePropositionCONDITIONAL,
+    IMPLY,
 )
 
 from enum import Enum
@@ -142,18 +143,18 @@ class Prover:
                 # Applying definition of Bi-Conditional
                 #  (p <-> q) -> (p -> q) & (q -> p)
                 proof_p_implies_q, truth_p_implies_q = Prover(
-                    self.assumptions.remove(self.conclusion), assumption / conclusion
+                    self.assumptions.remove(self.conclusion), IMPLY(assumption, conclusion)
                 ).prove()
                 proof_q_implies_p, truth_q_implies_p = Prover(
-                    self.assumptions.remove(self.conclusion), conclusion / assumption
+                    self.assumptions.remove(self.conclusion), IMPLY(conclusion, assumption)
                 ).prove()
                 if truth_p_implies_q and truth_q_implies_p:
                     self.proof.extend(proof_p_implies_q)
                     self.proof.extend(proof_q_implies_p)
                     self.proof.add(
                         RulesOfInference.DefinitionOfBiConditional,
-                        assumption / conclusion,
-                        conclusion / assumption,
+                        IMPLY(assumption, conclusion),
+                        IMPLY(conclusion, assumption),
                     )
                     return self.proof, True
 
@@ -222,7 +223,7 @@ class Prover:
                         if self.conclusion.conclusion == conclusion:
                             proof, truth = Prover(
                                 self.assumptions.remove(i),
-                                self.conclusion.assumption / assumption,
+                                IMPLY(self.conclusion.assumption, assumption),
                             ).prove()
                             if truth:
                                 self.proof.extend(proof)
@@ -307,9 +308,11 @@ class Prover:
                     # Applying definition of Bi-Conditional
                     #  (p <-> q) -> (p -> q) & (q -> p)
                     assumptions = self.assumptions.get()
-                    if not ((assumption / conclusion) in assumptions) or not ((conclusion / assumption) in assumptions):
-                        assumptions.append(assumption / conclusion)
-                        assumptions.append(conclusion / assumption)
+                    if not (IMPLY(assumption, conclusion) in assumptions) or not (
+                        IMPLY(conclusion, assumption) in assumptions
+                    ):
+                        assumptions.append(IMPLY(assumption, conclusion))
+                        assumptions.append(IMPLY(conclusion, assumption))
 
                         proof, truth = Prover(assumptions, self.conclusion).prove()
                         if truth:

@@ -1,5 +1,5 @@
 import unittest
-from logic import Proposition, Prover
+from logic import Proposition, Prover, IMPLY
 
 # TODO: check proof
 
@@ -16,7 +16,7 @@ class TestProver(unittest.TestCase):
     def test_prover_modus_ponens(self):
         assumptions = (
             self.p,
-            self.p / self.q,
+            IMPLY(self.p, self.q),
         )
         conclusion = self.q
 
@@ -29,7 +29,7 @@ class TestProver(unittest.TestCase):
     def test_prover_modus_tollens(self):
         assumptions = (
             ~self.q,
-            self.p / self.q,
+            IMPLY(self.p, self.q),
         )
         conclusion = ~self.p
 
@@ -41,10 +41,10 @@ class TestProver(unittest.TestCase):
 
     def test_prover_hypothetical_syllogism(self):
         assumptions = (
-            self.p / self.q,
-            self.q / self.r,
+            IMPLY(self.p, self.q),
+            IMPLY(self.q, self.r),
         )
-        conclusion = self.p / self.r
+        conclusion = IMPLY(self.p, self.r)
 
         _, truth = Prover(
             assumptions,
@@ -184,7 +184,7 @@ class TestProver(unittest.TestCase):
 
     def test_prover_multi_step_2(self):
         # modus tollens then demorgans
-        assumptions = (self.x / self.y, ~self.y)
+        assumptions = (IMPLY(self.x, self.y), ~self.y)
         conclusion = ~(self.x | self.y)
 
         _, truth = Prover(
@@ -195,7 +195,7 @@ class TestProver(unittest.TestCase):
 
     def test_prover_multi_step_3(self):
         # modus tollens then demorgans
-        assumptions = (self.x / self.y, ~self.y)
+        assumptions = (IMPLY(self.x, self.y), ~self.y)
         conclusion = ~(self.x | self.y)
 
         _, truth = Prover(
@@ -204,7 +204,7 @@ class TestProver(unittest.TestCase):
         ).prove()
         self.assertTrue(truth)
 
-        assumptions = ((self.y | self.z) / self.x, ~self.x)
+        assumptions = (IMPLY(self.y | self.z, self.x), ~self.x)
         conclusion = ~self.y & ~self.z
 
         _, truth = Prover(
@@ -236,11 +236,11 @@ class TestProver(unittest.TestCase):
         f = Proposition("g", "Superman exists")
 
         assumptions = [
-            (a & b) / e,
-            (~e) / c,
-            (~b) / d,
+            IMPLY(a & b, e),
+            IMPLY(~e, c),
+            IMPLY(~b, d),
             ~e,
-            f / (~c & ~d),
+            IMPLY(f, ~c & ~d),
         ]
         conclusion = ~f
 
