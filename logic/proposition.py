@@ -1,5 +1,4 @@
 from typing import Any, TypeAlias
-from copy import copy
 from abc import ABC, abstractmethod
 from warnings import warn
 from dataclasses import dataclass
@@ -38,8 +37,6 @@ class Statement(ABC):
         return CompositePropositionOR(self, other)
 
     def __invert__(self) -> StatementT:
-        if isinstance(self, CompositePropositionNOT):
-            return copy(self.statement)
         return CompositePropositionNOT(self)
 
 
@@ -49,10 +46,10 @@ class Proposition(Statement):
     statement: str = ""
 
     def remove_conditionals(self) -> StatementT:
-        return copy(self)
+        return self
 
     def simplify(self) -> StatementT:
-        return copy(self)
+        return self
 
     def extract(self) -> list[PropositionT]:
         return [self]
@@ -83,7 +80,7 @@ class Proposition(Statement):
 class CompositeProposition(Statement):
     def simplify(self) -> StatementT:
         warn("Not Implemented")
-        return copy(self)
+        return self
 
 
 @dataclass(frozen=True)
