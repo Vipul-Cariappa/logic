@@ -1,5 +1,5 @@
 import unittest
-from logic import Proposition, Prover, IMPLY
+from logic import Proposition, Prover, IMPLY, IFF
 
 # TODO: check proof
 
@@ -169,6 +169,38 @@ class TestProver(unittest.TestCase):
             (~(self.x | self.y),),
             ~self.x & ~self.y,
         ).prove()
+        self.assertTrue(truth)
+
+    def test_prover_not_of_not(self):
+        _, truth = Prover((~(~self.p),), self.p).prove()
+        self.assertTrue(truth)
+
+    def test_prover_complement(self):
+        _, truth = Prover(tuple(), self.p | ~self.p).prove()
+        self.assertTrue(truth)
+
+        _, truth = Prover(tuple(), self.p & ~self.p).prove()
+        self.assertFalse(truth)
+
+    def test_prover_definition_of_biconditional(self):
+        assumption = (IFF(self.p, self.q),)
+
+        conclusion = IMPLY(self.p, self.q)
+        _, truth = Prover(assumption, conclusion).prove()
+        self.assertTrue(truth)
+
+        conclusion = IMPLY(self.q, self.p)
+        _, truth = Prover(assumption, conclusion).prove()
+        self.assertTrue(truth)
+
+        assumption = (IMPLY(self.p, self.q), IMPLY(self.q, self.p))
+
+        conclusion = IFF(self.p, self.q)
+        _, truth = Prover(assumption, conclusion).prove()
+        self.assertTrue(truth)
+
+        conclusion = IFF(self.q, self.p)
+        _, truth = Prover(assumption, conclusion).prove()
         self.assertTrue(truth)
 
     def test_prover_multi_step_1(self):
