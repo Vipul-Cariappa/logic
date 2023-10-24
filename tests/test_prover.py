@@ -1,7 +1,8 @@
 """Tests for the Prover class"""
 
 import unittest
-from logic import Proposition, Prover, IMPLY, IFF
+
+from logic import IFF, IMPLY, prove, Proposition
 
 # TODO: check proof
 
@@ -25,10 +26,10 @@ class TestProver(unittest.TestCase):
         )
         conclusion = self.q
 
-        _, truth = Prover(
+        _, truth = prove(
             assumptions,
             conclusion,
-        ).prove()
+        )
         self.assertTrue(truth)
 
     def test_prover_modus_tollens(self):
@@ -39,10 +40,10 @@ class TestProver(unittest.TestCase):
         )
         conclusion = ~self.p
 
-        _, truth = Prover(
+        _, truth = prove(
             assumptions,
             conclusion,
-        ).prove()
+        )
         self.assertTrue(truth)
 
     def test_prover_hypothetical_syllogism(self):
@@ -53,10 +54,10 @@ class TestProver(unittest.TestCase):
         )
         conclusion = IMPLY(self.p, self.r)
 
-        _, truth = Prover(
+        _, truth = prove(
             assumptions,
             conclusion,
-        ).prove()
+        )
         self.assertTrue(truth)
 
     def test_prover_disjunctive_syllogism(self):
@@ -68,10 +69,10 @@ class TestProver(unittest.TestCase):
         )
         conclusion = self.p
 
-        _, truth = Prover(
+        _, truth = prove(
             assumptions,
             conclusion,
-        ).prove()
+        )
         self.assertTrue(truth)
 
         # (p ∨ q) ^ ¬ p -> q
@@ -81,10 +82,10 @@ class TestProver(unittest.TestCase):
         )
         conclusion = self.q
 
-        _, truth = Prover(
+        _, truth = prove(
             assumptions,
             conclusion,
-        ).prove()
+        )
         self.assertTrue(truth)
 
     def test_prover_addition(self):
@@ -92,18 +93,18 @@ class TestProver(unittest.TestCase):
         assumptions = (self.p,)
         conclusion = self.p | self.q
 
-        _, truth = Prover(
+        _, truth = prove(
             assumptions,
             conclusion,
-        ).prove()
+        )
         self.assertTrue(truth)
 
         conclusion = self.r | self.p
 
-        _, truth = Prover(
+        _, truth = prove(
             assumptions,
             conclusion,
-        ).prove()
+        )
         self.assertTrue(truth)
 
     def test_prover_simplification(self):
@@ -111,18 +112,18 @@ class TestProver(unittest.TestCase):
         assumptions = (self.p & self.q,)
         conclusion = self.p
 
-        _, truth = Prover(
+        _, truth = prove(
             assumptions,
             conclusion,
-        ).prove()
+        )
         self.assertTrue(truth)
 
         conclusion = self.q
 
-        _, truth = Prover(
+        _, truth = prove(
             assumptions,
             conclusion,
-        ).prove()
+        )
         self.assertTrue(truth)
 
     def test_prover_conjunction(self):
@@ -130,18 +131,18 @@ class TestProver(unittest.TestCase):
         assumptions = (self.p, self.q)
         conclusion = self.p & self.q
 
-        _, truth = Prover(
+        _, truth = prove(
             assumptions,
             conclusion,
-        ).prove()
+        )
         self.assertTrue(truth)
 
         conclusion = self.q & self.p
 
-        _, truth = Prover(
+        _, truth = prove(
             assumptions,
             conclusion,
-        ).prove()
+        )
         self.assertTrue(truth)
 
     def test_prover_resolution(self):
@@ -152,50 +153,50 @@ class TestProver(unittest.TestCase):
         )
         conclusion = self.r | self.q
 
-        _, truth = Prover(
+        _, truth = prove(
             assumptions,
             conclusion,
-        ).prove()
+        )
         self.assertTrue(truth)
 
     def test_prover_demorgans_theorem(self):
         """Tests the De'Morgan's Theorem equivalence"""
-        _, truth = Prover(
+        _, truth = prove(
             (~self.x | ~self.y,),
             ~(self.x & self.y),
-        ).prove()
+        )
         self.assertTrue(truth)
 
-        _, truth = Prover(
+        _, truth = prove(
             (~self.x & ~self.y,),
             ~(self.x | self.y),
-        ).prove()
+        )
         self.assertTrue(truth)
 
-        _, truth = Prover(
+        _, truth = prove(
             (~(self.x & self.y),),
             ~self.x | ~self.y,
-        ).prove()
+        )
         self.assertTrue(truth)
 
-        _, truth = Prover(
+        _, truth = prove(
             (~(self.x | self.y),),
             ~self.x & ~self.y,
-        ).prove()
+        )
         self.assertTrue(truth)
 
     def test_prover_not_of_not(self):
         """Tests the Not of Not equivalence"""
-        _, truth = Prover((~(~self.p),), self.p).prove()
+        _, truth = prove((~(~self.p),), self.p)
         self.assertTrue(truth)
 
     def test_prover_complement(self):
         """Tests the Complement equivalence
         i.e. p | ~p is tautology and p & ~p is a contradiction"""
-        _, truth = Prover(tuple(), self.p | ~self.p).prove()
+        _, truth = prove(tuple(), self.p | ~self.p)
         self.assertTrue(truth)
 
-        _, truth = Prover(tuple(), self.p & ~self.p).prove()
+        _, truth = prove(tuple(), self.p & ~self.p)
         self.assertFalse(truth)
 
     def test_prover_definition_of_biconditional(self):
@@ -203,21 +204,21 @@ class TestProver(unittest.TestCase):
         assumption = (IFF(self.p, self.q),)
 
         conclusion = IMPLY(self.p, self.q)
-        _, truth = Prover(assumption, conclusion).prove()
+        _, truth = prove(assumption, conclusion)
         self.assertTrue(truth)
 
         conclusion = IMPLY(self.q, self.p)
-        _, truth = Prover(assumption, conclusion).prove()
+        _, truth = prove(assumption, conclusion)
         self.assertTrue(truth)
 
         assumption = (IMPLY(self.p, self.q), IMPLY(self.q, self.p))
 
         conclusion = IFF(self.p, self.q)
-        _, truth = Prover(assumption, conclusion).prove()
+        _, truth = prove(assumption, conclusion)
         self.assertTrue(truth)
 
         conclusion = IFF(self.q, self.p)
-        _, truth = Prover(assumption, conclusion).prove()
+        _, truth = prove(assumption, conclusion)
         self.assertTrue(truth)
 
     def test_prover_multi_step_1(self):
@@ -227,10 +228,10 @@ class TestProver(unittest.TestCase):
         assumptions = (~self.x, ~self.y)
         conclusion = ~(self.x | self.y)
 
-        _, truth = Prover(
+        _, truth = prove(
             assumptions,
             conclusion,
-        ).prove()
+        )
         self.assertTrue(truth)
 
     def test_prover_multi_step_2(self):
@@ -239,10 +240,10 @@ class TestProver(unittest.TestCase):
         assumptions = (IMPLY(self.x, self.y), ~self.y)
         conclusion = ~(self.x | self.y)
 
-        _, truth = Prover(
+        _, truth = prove(
             assumptions,
             conclusion,
-        ).prove()
+        )
         self.assertTrue(truth)
 
     def test_prover_multi_step_3(self):
@@ -251,19 +252,19 @@ class TestProver(unittest.TestCase):
         assumptions = (IMPLY(self.x, self.y), ~self.y)
         conclusion = ~(self.x | self.y)
 
-        _, truth = Prover(
+        _, truth = prove(
             assumptions,
             conclusion,
-        ).prove()
+        )
         self.assertTrue(truth)
 
         assumptions = (IMPLY(self.y | self.z, self.x), ~self.x)
         conclusion = ~self.y & ~self.z
 
-        _, truth = Prover(
+        _, truth = prove(
             assumptions,
             conclusion,
-        ).prove()
+        )
         self.assertTrue(truth)
 
     def test_prove_superman_does_not_exists(self):
@@ -298,10 +299,10 @@ class TestProver(unittest.TestCase):
         ]
         conclusion = ~f
 
-        _, truth = Prover(
+        _, truth = prove(
             assumptions,
             conclusion,
-        ).prove()
+        )
         self.assertTrue(truth)
 
 
