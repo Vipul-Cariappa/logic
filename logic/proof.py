@@ -19,11 +19,17 @@ class ProofStrategy(Enum):
     pass
 
 
+ProofEntryT = tuple[Statement, ProofStrategy, tuple[Statement, ...]]
+
+
 class Equivalence(ProofStrategy):
     DefinitionOfBiConditional = "Definition Of Bi-Conditional"
     DeMorgensLaw = "De'Morgen's Law"
-    NotOfNot = "NotOfNot"
+    NotOfNot = "Not Of Not"
     Complement = "Complement"
+
+    def __str__(self) -> str:
+        return self.value
 
 
 class RulesOfInference(ProofStrategy):
@@ -35,7 +41,9 @@ class RulesOfInference(ProofStrategy):
     Simplification = "Simplification"
     Conjunction = "Conjunction"
     Resolution = "Resolution"
-    Deduction = "Deduction"
+
+    def __str__(self) -> str:
+        return self.value
 
 
 class Assumption:
@@ -47,6 +55,12 @@ class Assumption:
 
     def __contains__(self, key: Any) -> bool:
         return key in self.assumptions
+
+    def __str__(self) -> str:
+        result = ""
+        for i in self.assumptions:
+            result += "{:>28}\n".format(str(i))
+        return result
 
     def with_proposition(self, prop: Statement) -> Generator[Statement, None, None]:
         individual_propositions = prop.extract()
@@ -68,24 +82,24 @@ class Assumption:
 
 
 class Proof:
-    def __init__(self, proof: list[tuple[ProofStrategy, tuple[Statement, ...]]] | None = None) -> None:
-        self.proof: list[tuple[ProofStrategy, tuple[Statement, ...]]] = proof if proof else []
+    def __init__(self, proof: list[ProofEntryT] | None = None) -> None:
+        self.proof: list[ProofEntryT] = proof if proof else []
 
-    def add(self, roi: ProofStrategy, *statement: Statement) -> None:
-        self.proof.append((roi, (*statement,)))
+    def add_step(self, conclusion: Statement, roi: ProofStrategy, *statement: Statement) -> None:
+        self.proof.append((conclusion, roi, (*statement,)))
 
     def extend(self, proof: ProofT) -> None:
         self.proof.extend(proof.proof)
 
-    def __iter__(self) -> Iterator[tuple[ProofStrategy, tuple[Statement, ...]]]:
+    def __iter__(self) -> Iterator[ProofEntryT]:
         return iter(self.proof)
 
     def __str__(self) -> str:
         result = ""
-        for rof, statements in self:
-            result += str(rof) + "\t"
-            result += "{" + ", ".join(str(i) for i in statements) + "}"
-            result += "\n"
+        for conclusion, rof, statements in self:
+            result += "{:>28} {:>28} {:28}\n".format(
+                str(conclusion), str(rof), "{" + ", ".join(str(i) for i in statements) + "}"
+            )
         return result
 
 
@@ -110,7 +124,7 @@ class Prover:
                     proof, truth = Prover(self.assumptions, statement.statement).prove()
                     if truth:
                         self.proof.extend(proof)
-                        self.proof.add(Equivalence.NotOfNot, statement.statement)
+                        self.proof.add_step(self.conclusion, Equivalence.NotOfNot, statement.statement)
                         return self.proof, True
 
                 # Applying De'Morgen's Law
@@ -119,30 +133,30 @@ class Prover:
                         proof, truth = Prover(self.assumptions, ~first | ~second).prove()
                         if truth:
                             self.proof.extend(proof)
-                            self.proof.add(Equivalence.DeMorgensLaw, ~first | ~second)
+                            self.proof.add_step(self.conclusion, Equivalence.DeMorgensLaw, ~first | ~second)
                             return self.proof, True
                     case CompositePropositionOR(first=first, second=second):
                         proof, truth = Prover(self.assumptions, ~first & ~second).prove()
                         if truth:
                             self.proof.extend(proof)
-                            self.proof.add(Equivalence.DeMorgensLaw, ~first & ~second)
+                            self.proof.add_step(self.conclusion, Equivalence.DeMorgensLaw, ~first & ~second)
                             return self.proof, True
 
             case CompositePropositionOR(first=first, second=second):
                 # Applying x | ~x <-> True
                 if first == ~second or ~first == second:
-                    return Proof([(Equivalence.Complement, (self.conclusion,))]), True
+                    return Proof([(self.conclusion, Equivalence.Complement, (self.conclusion,))]), True
 
                 # Applying Addition
                 proof_first, truth_first = Prover(self.assumptions.remove(self.conclusion), first).prove()
                 if truth_first:
                     self.proof.extend(proof_first)
-                    self.proof.add(RulesOfInference.Addition, first, second)
+                    self.proof.add_step(self.conclusion, RulesOfInference.Addition, first, second)
                     return self.proof, True
                 proof_second, truth_second = Prover(self.assumptions.remove(self.conclusion), second).prove()
                 if truth_second:
                     self.proof.extend(proof_second)
-                    self.proof.add(RulesOfInference.Addition, second, first)
+                    self.proof.add_step(self.conclusion, RulesOfInference.Addition, second, first)
                     return self.proof, True
 
                 # Applying De'Morgen's Law
@@ -150,7 +164,7 @@ class Prover:
                     proof, truth = Prover(self.assumptions, ~(first & second)).prove()
                     if truth:
                         self.proof.extend(proof)
-                        self.proof.add(Equivalence.DeMorgensLaw, ~(first & second))
+                        self.proof.add_step(self.conclusion, Equivalence.DeMorgensLaw, ~(first & second))
                         return self.proof, True
 
             case CompositePropositionAND(first=first, second=second):
@@ -164,7 +178,7 @@ class Prover:
                 if truth_first and truth_second:
                     self.proof.extend(proof_first)
                     self.proof.extend(proof_second)
-                    self.proof.add(RulesOfInference.Conjunction, first, second)
+                    self.proof.add_step(self.conclusion, RulesOfInference.Conjunction, first, second)
                     return self.proof, True
 
                 # Applying De'Morgen's Law
@@ -172,7 +186,7 @@ class Prover:
                     proof, truth = Prover(self.assumptions, ~(first | second)).prove()
                     if truth:
                         self.proof.extend(proof)
-                        self.proof.add(Equivalence.DeMorgensLaw, ~(first | second))
+                        self.proof.add_step(self.conclusion, Equivalence.DeMorgensLaw, ~(first | second))
                         return self.proof, True
 
             case CompositePropositionBICONDITIONAL(assumption=assumption, conclusion=conclusion):
@@ -187,7 +201,8 @@ class Prover:
                 if truth_p_implies_q and truth_q_implies_p:
                     self.proof.extend(proof_p_implies_q)
                     self.proof.extend(proof_q_implies_p)
-                    self.proof.add(
+                    self.proof.add_step(
+                        self.conclusion,
                         Equivalence.DefinitionOfBiConditional,
                         IMPLY(assumption, conclusion),
                         IMPLY(conclusion, assumption),
@@ -197,11 +212,10 @@ class Prover:
         return Proof(), False
 
     def prove(self) -> tuple[Proof, bool]:
-        for i in self.assumptions.with_proposition(self.conclusion):
-            if i == self.conclusion:
-                self.proof.add(RulesOfInference.Deduction, i)
-                return self.proof, True
+        if self.conclusion in self.assumptions:
+            return self.proof, True
 
+        for i in self.assumptions.with_proposition(self.conclusion):
             match i:
                 case CompositePropositionNOT(statement=statement):
                     # Applying NotOfNot i.e. ~(~x) <-> x
@@ -212,11 +226,11 @@ class Prover:
                                 assumptions.append(statement.statement)
                                 proof, truth = Prover(assumptions, self.conclusion).prove()
                                 if truth:
-                                    self.proof.add(Equivalence.NotOfNot, i)
+                                    self.proof.add_step(self.conclusion, Equivalence.NotOfNot, i)
                                     self.proof.extend(proof)
                                     return self.proof, True
                         else:
-                            self.proof.add(Equivalence.NotOfNot, i)
+                            self.proof.add_step(self.conclusion, Equivalence.NotOfNot, i)
                             return self.proof, True
 
                     # Applying De'Morgan's Law
@@ -228,11 +242,11 @@ class Prover:
                                     assumptions.append(~first | ~second)
                                     proof, truth = Prover(assumptions, self.conclusion).prove()
                                     if truth:
-                                        self.proof.add(Equivalence.DeMorgensLaw, i)
+                                        self.proof.add_step(self.conclusion, Equivalence.DeMorgensLaw, i)
                                         self.proof.extend(proof)
                                         return proof, True
                             else:
-                                self.proof.add(Equivalence.DeMorgensLaw, i)
+                                self.proof.add_step(self.conclusion, Equivalence.DeMorgensLaw, i)
                                 return self.proof, True
 
                         case CompositePropositionOR(first=first, second=second):
@@ -242,11 +256,11 @@ class Prover:
                                     assumptions.append(~first & ~second)
                                     proof, truth = Prover(assumptions, self.conclusion).prove()
                                     if truth:
-                                        self.proof.add(Equivalence.DeMorgensLaw, i)
+                                        self.proof.add_step(self.conclusion, Equivalence.DeMorgensLaw, i)
                                         self.proof.extend(proof)
                                         return self.proof, True
                             else:
-                                self.proof.add(Equivalence.DeMorgensLaw, i)
+                                self.proof.add_step(self.conclusion, Equivalence.DeMorgensLaw, i)
                                 return self.proof, True
 
                 case CompositePropositionOR(first=first, second=second):
@@ -255,26 +269,30 @@ class Prover:
                         if self.conclusion.first == first:
                             proof, truth = Prover(self.assumptions.remove(i), ~second | self.conclusion.second).prove()
                             self.proof.extend(proof)
-                            self.proof.add(RulesOfInference.Deduction, i)
-                            self.proof.add(RulesOfInference.Resolution, i, ~second | self.conclusion.second)
+                            self.proof.add_step(
+                                self.conclusion, RulesOfInference.Resolution, i, ~second | self.conclusion.second
+                            )
                             return self.proof, True
                         if self.conclusion.second == second:
                             proof, truth = Prover(self.assumptions.remove(i), ~first | self.conclusion.first).prove()
                             self.proof.extend(proof)
-                            self.proof.add(RulesOfInference.Deduction, i)
-                            self.proof.add(RulesOfInference.Resolution, i, ~first | self.conclusion.first)
+                            self.proof.add_step(
+                                self.conclusion, RulesOfInference.Resolution, i, ~first | self.conclusion.first
+                            )
                             return self.proof, True
                         if self.conclusion.first == second:
                             proof, truth = Prover(self.assumptions.remove(i), ~first | self.conclusion.second).prove()
                             self.proof.extend(proof)
-                            self.proof.add(RulesOfInference.Deduction, i)
-                            self.proof.add(RulesOfInference.Resolution, i, ~first | self.conclusion.second)
+                            self.proof.add_step(
+                                self.conclusion, RulesOfInference.Resolution, i, ~first | self.conclusion.second
+                            )
                             return self.proof, True
                         if self.conclusion.second == first:
                             proof, truth = Prover(self.assumptions.remove(i), ~second | self.conclusion.first).prove()
                             self.proof.extend(proof)
-                            self.proof.add(RulesOfInference.Deduction, i)
-                            self.proof.add(RulesOfInference.Resolution, i, ~second | self.conclusion.first)
+                            self.proof.add_step(
+                                self.conclusion, RulesOfInference.Resolution, i, ~second | self.conclusion.first
+                            )
                             return self.proof, True
 
                     # Applying Disjunctive Syllogism
@@ -282,15 +300,13 @@ class Prover:
                         proof, truth = Prover(self.assumptions.remove(i), ~second).prove()
                         if truth:
                             self.proof.extend(proof)
-                            self.proof.add(RulesOfInference.Deduction, i)
-                            self.proof.add(RulesOfInference.DisjunctiveSyllogism, i, ~second)
+                            self.proof.add_step(self.conclusion, RulesOfInference.DisjunctiveSyllogism, i, ~second)
                             return self.proof, True
                     if self.conclusion == second:
                         proof, truth = Prover(self.assumptions.remove(i), ~first).prove()
                         if truth:
                             self.proof.extend(proof)
-                            self.proof.add(RulesOfInference.Deduction, i)
-                            self.proof.add(RulesOfInference.DisjunctiveSyllogism, i, ~first)
+                            self.proof.add_step(self.conclusion, RulesOfInference.DisjunctiveSyllogism, i, ~first)
                             return self.proof, True
 
                     # Applying De'Morgen's Law
@@ -301,11 +317,11 @@ class Prover:
                                 assumptions.append(~(first.statement & second.statement))
                                 proof, truth = Prover(assumptions, self.conclusion).prove()
                                 if truth:
-                                    self.proof.add(Equivalence.DeMorgensLaw, i)
+                                    self.proof.add_step(self.conclusion, Equivalence.DeMorgensLaw, i)
                                     self.proof.extend(proof)
                                     return self.proof, True
                         else:
-                            self.proof.add(Equivalence.DeMorgensLaw, i)
+                            self.proof.add_step(self.conclusion, Equivalence.DeMorgensLaw, i)
                             return self.proof, True
 
                 case CompositePropositionAND(first=first, second=second):
@@ -317,11 +333,11 @@ class Prover:
                                 assumptions.append(~(first.statement | second.statement))
                                 proof, truth = Prover(assumptions, self.conclusion).prove()
                                 if truth:
-                                    self.proof.add(Equivalence.DeMorgensLaw, i)
+                                    self.proof.add_step(self.conclusion, Equivalence.DeMorgensLaw, i)
                                     self.proof.extend(proof)
                                     return self.proof, True
                         else:
-                            self.proof.add(Equivalence.DeMorgensLaw, i)
+                            self.proof.add_step(self.conclusion, Equivalence.DeMorgensLaw, i)
                             return self.proof, True
 
                     # Applying Simplification
@@ -334,11 +350,11 @@ class Prover:
 
                             proof, truth = Prover(assumptions, self.conclusion).prove()
                             if truth:
-                                self.proof.add(RulesOfInference.Simplification, i)
+                                self.proof.add_step(self.conclusion, RulesOfInference.Simplification, i)
                                 self.proof.extend(proof)
                                 return self.proof, True
                     else:
-                        self.proof.add(RulesOfInference.Simplification, i)
+                        self.proof.add_step(self.conclusion, RulesOfInference.Simplification, i)
                         return self.proof, True
 
                 case CompositePropositionCONDITIONAL(assumption=assumption, conclusion=conclusion):
@@ -351,8 +367,7 @@ class Prover:
                         proof, truth = Prover(self.assumptions.remove(i), assumption).prove()
                         if truth:
                             self.proof.extend(proof)
-                            self.proof.add(RulesOfInference.Deduction, i)
-                            self.proof.add(RulesOfInference.ModusPonens, i, assumption)
+                            self.proof.add_step(conclusion, RulesOfInference.ModusPonens, i, assumption)
                             if self.conclusion != conclusion:
                                 proof, truth = Prover(
                                     [conclusion, *(self.assumptions.remove(i).get())], self.conclusion
@@ -372,8 +387,7 @@ class Prover:
                         proof, truth = Prover(self.assumptions.remove(i), ~conclusion).prove()
                         if truth:
                             self.proof.extend(proof)
-                            self.proof.add(RulesOfInference.Deduction, i)
-                            self.proof.add(RulesOfInference.ModusTollens, i, ~conclusion)
+                            self.proof.add_step(~assumption, RulesOfInference.ModusTollens, i, ~conclusion)
                             if self.conclusion != ~assumption:
                                 proof, truth = Prover(
                                     [~assumption, *(self.assumptions.remove(i).get())], self.conclusion
@@ -393,8 +407,8 @@ class Prover:
                             ).prove()
                             if truth:
                                 self.proof.extend(proof)
-                                self.proof.add(RulesOfInference.Deduction, i)
-                                self.proof.add(
+                                self.proof.add_step(
+                                    self.conclusion,
                                     RulesOfInference.HypotheticalSyllogism,
                                     i,
                                     IMPLY(self.conclusion.assumption, assumption),
@@ -408,7 +422,7 @@ class Prover:
                         IMPLY(assumption, conclusion) == self.conclusion
                         or IMPLY(conclusion, assumption) == self.conclusion
                     ):
-                        self.proof.add(Equivalence.DefinitionOfBiConditional, i)
+                        self.proof.add_step(self.conclusion, Equivalence.DefinitionOfBiConditional, i)
                         return self.proof, True
 
                     assumptions = self.assumptions.get()
@@ -424,7 +438,7 @@ class Prover:
                             self.conclusion,
                         ).prove()
                         if truth:
-                            self.proof.add(Equivalence.DefinitionOfBiConditional, i)
+                            self.proof.add_step(self.conclusion, Equivalence.DefinitionOfBiConditional, i)
                             self.proof.extend(proof)
                             return self.proof, True
 
