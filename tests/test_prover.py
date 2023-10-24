@@ -1,3 +1,5 @@
+"""Tests for the Prover class"""
+
 import unittest
 from logic import Proposition, Prover, IMPLY, IFF
 
@@ -5,6 +7,8 @@ from logic import Proposition, Prover, IMPLY, IFF
 
 
 class TestProver(unittest.TestCase):
+    """Tests for the Prover class"""
+
     def setUp(self) -> None:
         self.x = Proposition("x")
         self.y = Proposition("y")
@@ -14,6 +18,7 @@ class TestProver(unittest.TestCase):
         self.r = Proposition("r")
 
     def test_prover_modus_ponens(self):
+        """Tests the Modus Ponens rule of inference"""
         assumptions = (
             self.p,
             IMPLY(self.p, self.q),
@@ -27,6 +32,7 @@ class TestProver(unittest.TestCase):
         self.assertTrue(truth)
 
     def test_prover_modus_tollens(self):
+        """Tests the Modus Tollens rule of inference"""
         assumptions = (
             ~self.q,
             IMPLY(self.p, self.q),
@@ -40,6 +46,7 @@ class TestProver(unittest.TestCase):
         self.assertTrue(truth)
 
     def test_prover_hypothetical_syllogism(self):
+        """Tests the Hypothetical Syllogism rule of inference"""
         assumptions = (
             IMPLY(self.p, self.q),
             IMPLY(self.q, self.r),
@@ -53,6 +60,7 @@ class TestProver(unittest.TestCase):
         self.assertTrue(truth)
 
     def test_prover_disjunctive_syllogism(self):
+        """Tests the Disjunctive Syllogism rule of inference"""
         # (p ∨ q) ^ ¬ q -> p
         assumptions = (
             self.p | self.q,
@@ -80,6 +88,7 @@ class TestProver(unittest.TestCase):
         self.assertTrue(truth)
 
     def test_prover_addition(self):
+        """Tests the Addition rule of inference"""
         assumptions = (self.p,)
         conclusion = self.p | self.q
 
@@ -98,6 +107,7 @@ class TestProver(unittest.TestCase):
         self.assertTrue(truth)
 
     def test_prover_simplification(self):
+        """Tests the Simplification rule of inference"""
         assumptions = (self.p & self.q,)
         conclusion = self.p
 
@@ -116,6 +126,7 @@ class TestProver(unittest.TestCase):
         self.assertTrue(truth)
 
     def test_prover_conjunction(self):
+        """Tests the Conjunction rule of inference"""
         assumptions = (self.p, self.q)
         conclusion = self.p & self.q
 
@@ -134,6 +145,7 @@ class TestProver(unittest.TestCase):
         self.assertTrue(truth)
 
     def test_prover_resolution(self):
+        """Tests the Resolution rule of inference"""
         assumptions = (
             self.p | self.q,
             ~self.p | self.r,
@@ -147,6 +159,7 @@ class TestProver(unittest.TestCase):
         self.assertTrue(truth)
 
     def test_prover_demorgans_theorem(self):
+        """Tests the De'Morgan's Theorem equivalence"""
         _, truth = Prover(
             (~self.x | ~self.y,),
             ~(self.x & self.y),
@@ -172,10 +185,13 @@ class TestProver(unittest.TestCase):
         self.assertTrue(truth)
 
     def test_prover_not_of_not(self):
+        """Tests the Not of Not equivalence"""
         _, truth = Prover((~(~self.p),), self.p).prove()
         self.assertTrue(truth)
 
     def test_prover_complement(self):
+        """Tests the Complement equivalence
+        i.e. p | ~p is tautology and p & ~p is a contradiction"""
         _, truth = Prover(tuple(), self.p | ~self.p).prove()
         self.assertTrue(truth)
 
@@ -183,6 +199,7 @@ class TestProver(unittest.TestCase):
         self.assertFalse(truth)
 
     def test_prover_definition_of_biconditional(self):
+        """Tests the Definition of Bi-Conditional equivalence"""
         assumption = (IFF(self.p, self.q),)
 
         conclusion = IMPLY(self.p, self.q)
@@ -204,7 +221,9 @@ class TestProver(unittest.TestCase):
         self.assertTrue(truth)
 
     def test_prover_multi_step_1(self):
-        # conjunction then demorgans
+        """Tests the multi step proof
+        with conjunction then demorgans"""
+
         assumptions = (~self.x, ~self.y)
         conclusion = ~(self.x | self.y)
 
@@ -215,7 +234,8 @@ class TestProver(unittest.TestCase):
         self.assertTrue(truth)
 
     def test_prover_multi_step_2(self):
-        # modus tollens then demorgans
+        """Tests the multi step proof
+        with modus tollens then demorgans"""
         assumptions = (IMPLY(self.x, self.y), ~self.y)
         conclusion = ~(self.x | self.y)
 
@@ -226,7 +246,8 @@ class TestProver(unittest.TestCase):
         self.assertTrue(truth)
 
     def test_prover_multi_step_3(self):
-        # modus tollens then demorgans
+        """Tests the multi step proof
+        with modus tollens then demorgans"""
         assumptions = (IMPLY(self.x, self.y), ~self.y)
         conclusion = ~(self.x | self.y)
 
@@ -246,10 +267,8 @@ class TestProver(unittest.TestCase):
         self.assertTrue(truth)
 
     def test_prove_superman_does_not_exists(self):
-        # based on the following question
-        # Taken from Discrete Mathematics and Its Applications 7th Edition
-        # by Kenneth H. Rosen
-        """
+        """Tests the multi step proof
+
         QUESTION:
         If Superman were able and willing to prevent evil,
         he would do so. If Superman were unable to prevent
@@ -258,6 +277,9 @@ class TestProver(unittest.TestCase):
         does not prevent evil. If Superman exists,
         he is neither impotent nor malevolent.
         Therefore, Superman does not exist.
+
+        Taken from Discrete Mathematics and Its Applications 7th Edition
+        by Kenneth H. Rosen
         """
 
         a = Proposition("a", "Superman is able to prevent evil")

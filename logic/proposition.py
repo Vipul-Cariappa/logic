@@ -1,7 +1,10 @@
-from typing import Any, TypeAlias
+"""All functions and classes related to creation of propositions
+and operation between propositions"""
+
 from abc import ABC, abstractmethod
-from warnings import warn
 from dataclasses import dataclass
+from typing import Any, TypeAlias
+from warnings import warn
 
 PropositionT: TypeAlias = "Proposition"
 CompositePropositionT: TypeAlias = "CompositeProposition"
@@ -10,17 +13,32 @@ StatementT: TypeAlias = "Statement"
 
 @dataclass(frozen=True)
 class Statement(ABC):
+    """Base class to represent any type of proposition"""
+
     @abstractmethod
     def remove_conditionals(self) -> StatementT:
-        pass
+        """Remove all conditions and change it to boolean logic.
+            Example: p -> q to  ~p | q
+
+        Returns:
+            StatementT: Statement without any conditions or bi-conditionals
+        """
 
     @abstractmethod
     def simplify(self) -> StatementT:
-        pass
+        """Simplifies the given statement
+
+        Returns:
+            StatementT: Simplified statement
+        """
 
     @abstractmethod
     def extract(self) -> list[PropositionT]:
-        pass
+        """Extracts individual propositions used in this statement
+
+        Returns:
+            list[PropositionT]: List of all individual Propositions
+        """
 
     @abstractmethod
     def __contains__(self, key: Any) -> bool:
@@ -28,12 +46,16 @@ class Statement(ABC):
 
     def __and__(self, other: Any) -> StatementT:
         if not isinstance(other, Statement):
-            raise TypeError(f"Cannot perform logical and of {type(self)} with {type(other)}")
+            raise TypeError(
+                f"Cannot perform logical and of {type(self)} with {type(other)}"
+            )
         return CompositePropositionAND(self, other)
 
     def __or__(self, other: Any) -> StatementT:
         if not isinstance(other, Statement):
-            raise TypeError(f"Cannot perform logical or of {type(self)} with {type(other)}")
+            raise TypeError(
+                f"Cannot perform logical or of {type(self)} with {type(other)}"
+            )
         return CompositePropositionOR(self, other)
 
     def __invert__(self) -> StatementT:
@@ -42,6 +64,8 @@ class Statement(ABC):
 
 @dataclass(frozen=True)
 class Proposition(Statement):
+    """Representation of a Proposition"""
+
     variable: str
     statement: str = ""
 
@@ -59,7 +83,9 @@ class Proposition(Statement):
 
     def __contains__(self, key: Any) -> bool:
         if not isinstance(key, Statement):
-            raise TypeError(f"Cannot perform in operation of {type(self)} with {type(key)}")
+            raise TypeError(
+                f"Cannot perform in operation of {type(self)} with {type(key)}"
+            )
 
         if isinstance(key, Proposition):
             return self == key
@@ -78,6 +104,8 @@ class Proposition(Statement):
 
 @dataclass(frozen=True)
 class CompositeProposition(Statement):
+    """Representation of a Proposition constructed with some operator"""
+
     def simplify(self) -> StatementT:
         warn("Not Implemented")
         return self
@@ -85,11 +113,15 @@ class CompositeProposition(Statement):
 
 @dataclass(frozen=True)
 class CompositePropositionAND(CompositeProposition):
+    """Representation of p & q"""
+
     first: Statement
     second: Statement
 
     def remove_conditionals(self) -> StatementT:
-        return CompositePropositionAND(self.first.remove_conditionals(), self.second.remove_conditionals())
+        return CompositePropositionAND(
+            self.first.remove_conditionals(), self.second.remove_conditionals()
+        )
 
     def extract(self) -> list[PropositionT]:
         return [*self.first.extract(), *self.second.extract()]
@@ -99,7 +131,9 @@ class CompositePropositionAND(CompositeProposition):
 
     def __contains__(self, key: Any) -> bool:
         if not isinstance(key, Statement):
-            raise TypeError(f"Cannot perform in operation of {type(self)} with {type(key)}")
+            raise TypeError(
+                f"Cannot perform in operation of {type(self)} with {type(key)}"
+            )
 
         return key in self.first or key in self.second or key == self
 
@@ -117,11 +151,15 @@ class CompositePropositionAND(CompositeProposition):
 
 @dataclass(frozen=True)
 class CompositePropositionOR(CompositeProposition):
+    """Representation of p | q"""
+
     first: Statement
     second: Statement
 
     def remove_conditionals(self) -> StatementT:
-        return CompositePropositionOR(self.first.remove_conditionals(), self.second.remove_conditionals())
+        return CompositePropositionOR(
+            self.first.remove_conditionals(), self.second.remove_conditionals()
+        )
 
     def extract(self) -> list[PropositionT]:
         return [*self.first.extract(), *self.second.extract()]
@@ -131,7 +169,9 @@ class CompositePropositionOR(CompositeProposition):
 
     def __contains__(self, key: Any) -> bool:
         if not isinstance(key, Statement):
-            raise TypeError(f"Cannot perform in operation of {type(self)} with {type(key)}")
+            raise TypeError(
+                f"Cannot perform in operation of {type(self)} with {type(key)}"
+            )
 
         return key in self.first or key in self.second or key == self
 
@@ -149,6 +189,8 @@ class CompositePropositionOR(CompositeProposition):
 
 @dataclass(frozen=True)
 class CompositePropositionNOT(CompositeProposition):
+    """Representation of ~p"""
+
     statement: Statement
 
     def remove_conditionals(self) -> StatementT:
@@ -162,7 +204,9 @@ class CompositePropositionNOT(CompositeProposition):
 
     def __contains__(self, key: Any) -> bool:
         if not isinstance(key, Statement):
-            raise TypeError(f"Cannot perform in operation of {type(self)} with {type(key)}")
+            raise TypeError(
+                f"Cannot perform in operation of {type(self)} with {type(key)}"
+            )
 
         return key in self.statement or key == self
 
@@ -180,11 +224,16 @@ class CompositePropositionNOT(CompositeProposition):
 
 @dataclass(frozen=True)
 class CompositePropositionCONDITIONAL(CompositeProposition):
+    """Representation of p -> q"""
+
     assumption: Statement
     conclusion: Statement
 
     def remove_conditionals(self) -> StatementT:
-        return ~self.assumption.remove_conditionals() | self.conclusion.remove_conditionals()
+        return (
+            ~self.assumption.remove_conditionals()
+            | self.conclusion.remove_conditionals()
+        )
 
     def extract(self) -> list[PropositionT]:
         return [*self.assumption.extract(), *self.conclusion.extract()]
@@ -194,7 +243,9 @@ class CompositePropositionCONDITIONAL(CompositeProposition):
 
     def __contains__(self, key: Any) -> bool:
         if not isinstance(key, Statement):
-            raise TypeError(f"Cannot perform in operation of {type(self)} with {type(key)}")
+            raise TypeError(
+                f"Cannot perform in operation of {type(self)} with {type(key)}"
+            )
 
         return (
             key in self.assumption
@@ -209,13 +260,18 @@ class CompositePropositionCONDITIONAL(CompositeProposition):
             raise TypeError(f"Cannot compare {type(self)} with {type(other)}")
 
         if isinstance(other, CompositePropositionCONDITIONAL):
-            return self.assumption == other.assumption and self.conclusion == other.conclusion
+            return (
+                self.assumption == other.assumption
+                and self.conclusion == other.conclusion
+            )
 
         return False
 
 
 @dataclass(frozen=True)
 class CompositePropositionBICONDITIONAL(CompositeProposition):
+    """Representation of p <-> q"""
+
     assumption: Statement
     conclusion: Statement
 
@@ -232,7 +288,9 @@ class CompositePropositionBICONDITIONAL(CompositeProposition):
 
     def __contains__(self, key: Any) -> bool:
         if not isinstance(key, Statement):
-            raise TypeError(f"Cannot perform in operation of {type(self)} with {type(key)}")
+            raise TypeError(
+                f"Cannot perform in operation of {type(self)} with {type(key)}"
+            )
 
         return (
             key in self.assumption
@@ -247,19 +305,46 @@ class CompositePropositionBICONDITIONAL(CompositeProposition):
             raise TypeError(f"Cannot compare {type(self)} with {type(other)}")
 
         if isinstance(other, CompositePropositionBICONDITIONAL):
-            return self.assumption == other.assumption and self.conclusion == other.conclusion
+            return (
+                self.assumption == other.assumption
+                and self.conclusion == other.conclusion
+            )
 
         return False
 
 
-def AND(first: Statement, second: Statement, *others: Statement) -> CompositePropositionAND:
+def AND(
+    first: Statement, second: Statement, *others: Statement
+) -> CompositePropositionAND:
+    """Constructs Composite Proportions with & as the operators between them
+
+    Args:
+        first (Statement): First proposition
+        second (Statement): Second proposition
+        others (*Statement): Any length of other propositions
+
+    Returns:
+        CompositePropositionAND: Proposition and(ed) with all given propositions
+    """
     if len(others) == 0:
         return CompositePropositionAND(first, second)
 
     return CompositePropositionAND(first, AND(second, *others))
 
 
-def OR(first: Statement, second: Statement, *others: Statement) -> CompositePropositionOR:
+def OR(
+    first: Statement, second: Statement, *others: Statement
+) -> CompositePropositionOR:
+    """Constructs Composite Proportions with | as the operators between them
+
+    Args:
+        first (Statement): First proposition
+        second (Statement): Second proposition
+        others (*Statement): Any length of other propositions
+
+    Returns:
+        CompositePropositionAND: Proposition or(ed) with all given propositions
+    """
     if len(others) == 0:
         return CompositePropositionOR(first, second)
 
@@ -267,12 +352,43 @@ def OR(first: Statement, second: Statement, *others: Statement) -> CompositeProp
 
 
 def NOT(statement: Statement) -> CompositePropositionNOT:
+    """Constructs Composite Proposition that is ~ of statement
+
+    Args:
+        statement (Statement): Proposition to negate
+
+    Returns:
+        CompositePropositionNOT: Negated Proposition
+    """
     return CompositePropositionNOT(statement)
 
 
-def IMPLY(assumption: Statement, conclusion: Statement) -> CompositePropositionCONDITIONAL:
+def IMPLY(
+    assumption: Statement, conclusion: Statement
+) -> CompositePropositionCONDITIONAL:
+    """Construct Composite Proposition with -> as the operator between them
+
+    Args:
+        assumption (Statement): The assumption proposition
+        conclusion (Statement): The conclusion proposition
+
+    Returns:
+        CompositePropositionCONDITIONAL: Conditional Proposition
+    """
     return CompositePropositionCONDITIONAL(assumption, conclusion)
 
 
-def IFF(assumption: Statement, conclusion: Statement) -> CompositePropositionBICONDITIONAL:
+def IFF(
+    assumption: Statement, conclusion: Statement
+) -> CompositePropositionBICONDITIONAL:
+    """Construct Composite Proposition with <-> as the operator between them.
+        i.e. constructs if and only if
+
+    Args:
+        assumption (Statement): The assumption proposition
+        conclusion (Statement): The conclusion proposition
+
+    Returns:
+        CompositePropositionBICONDITIONAL: Bi-Conditional Proposition
+    """
     return CompositePropositionBICONDITIONAL(assumption, conclusion)
