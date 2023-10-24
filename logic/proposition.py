@@ -215,8 +215,6 @@ class CompositePropositionNOT(CompositeProposition):
             raise TypeError(f"Cannot compare {type(self)} with {type(other)}")
 
         if isinstance(other, CompositePropositionNOT):
-            # FIXME: this should be part of the proof
-            #  By Equivalence of ~(~x) <-> x
             return self.statement == other.statement
 
         return False
