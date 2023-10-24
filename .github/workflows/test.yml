@@ -27,11 +27,23 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        python -m pip install flake8 mypy
+        python -m pip install flake8 mypy pylint
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
     - name: Lint with flake8
       run: |
         flake8 ./tests/*.py ./logic/*.py --max-line-length=120
+    - name: Lint with pylint
+      continue-on-error: true
+      run: |
+        pylint ./tests/*.py ./logic/*.py --max-line-length=120 --disable W1114 --disable C0103
+      # W1114: arguments-out-of-order (pylint getting confused)
+      # C0103: invalid-name
+      # R0914: too-many-locals
+      # R0911: too-many-return-statements
+      # R0912: too-many-branches 
+      # R0915: too-many-statements 
+      # R0903: too-few-public-methods
+
     - name: Type checker with mypy
       run: |
         mypy ./tests/*.py ./logic/*.py
