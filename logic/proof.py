@@ -686,6 +686,17 @@ class Environment:
 
         return self._prove_decomposed_conclusion(to_prove)
 
+    def check(self, statement: Statement) -> bool:
+        """Checks if the given statement is True in the given environment
+
+        Args:
+            statement (Statement): Statement to check the truth value of
+
+        Returns:
+            bool: True if it can be proved to be true, otherwise False
+        """
+        return self.prove(statement)[-1]
+
 
 def prove(
     assumptions: Assumption | Sequence[Statement], conclusion: Statement
