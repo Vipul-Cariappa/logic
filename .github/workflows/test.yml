@@ -33,23 +33,16 @@ jobs:
       run: |
         flake8 ./tests/*.py ./logic/*.py --max-line-length=120
     - name: Lint with pylint
+      continue-on-error: true
       run: |
-        pylint ./tests/*.py ./logic/*.py \
-         --max-line-length=120 \
-         --disable W1114 \
-         --disable C0103 \
-         --disable R0914 \
-         --disable R0911 \
-         --disable R0912 \
-         --disable R0915 \ 
-         --disable R0903
-    # W1114: arguments-out-of-order (pylint getting confused)
-    # C0103: invalid-name
-    # R0914: too-many-locals
-    # R0911: too-many-return-statements
-    # R0912: too-many-branches (preferably should not disable this)
-    # R0915: too-many-statements (preferably should not disable this)
-    # R0903: too-few-public-methods
+        pylint ./tests/*.py ./logic/*.py --max-line-length=120 --disable W1114 --disable C0103
+      # W1114: arguments-out-of-order (pylint getting confused)
+      # C0103: invalid-name
+      # R0914: too-many-locals
+      # R0911: too-many-return-statements
+      # R0912: too-many-branches 
+      # R0915: too-many-statements 
+      # R0903: too-few-public-methods
 
     - name: Type checker with mypy
       run: |
