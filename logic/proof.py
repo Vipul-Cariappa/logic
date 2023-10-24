@@ -195,42 +195,41 @@ class Prover:
             case CompositePropositionNOT(statement=statement):
                 # Applying NotOfNot i.e. ~(~x) <-> x
                 if isinstance(statement, CompositePropositionNOT):
-                    proof, truth = Prover(self.assumptions, statement.statement).prove()
+                    sub_conclusion = statement.statement
+                    proof, truth = Prover(self.assumptions, sub_conclusion).prove()
                     if truth:
                         self.proof.extend(proof)
                         self.proof.add_step(
-                            self.conclusion, Equivalence.NotOfNot, statement.statement
+                            self.conclusion, Equivalence.NotOfNot, sub_conclusion
                         )
                         return self.proof, True
 
                 # Applying De'Morgen's Law
                 match statement:
-                    case CompositePropositionAND(first=first, second=second):
-                        proof, truth = Prover(
-                            self.assumptions, ~first | ~second
-                        ).prove()
+                    case CompositePropositionAND(first, second):
+                        sub_conclusion = ~first | ~second
+                        proof, truth = Prover(self.assumptions, sub_conclusion).prove()
                         if truth:
                             self.proof.extend(proof)
                             self.proof.add_step(
                                 self.conclusion,
                                 Equivalence.DeMorgensLaw,
-                                ~first | ~second,
+                                sub_conclusion,
                             )
                             return self.proof, True
-                    case CompositePropositionOR(first=first, second=second):
-                        proof, truth = Prover(
-                            self.assumptions, ~first & ~second
-                        ).prove()
+                    case CompositePropositionOR(first, second):
+                        sub_conclusion = ~first & ~second
+                        proof, truth = Prover(self.assumptions, sub_conclusion).prove()
                         if truth:
                             self.proof.extend(proof)
                             self.proof.add_step(
                                 self.conclusion,
                                 Equivalence.DeMorgensLaw,
-                                ~first & ~second,
+                                sub_conclusion,
                             )
                             return self.proof, True
 
-            case CompositePropositionOR(first=first, second=second):
+            case CompositePropositionOR(first, second):
                 # Applying x | ~x <-> True
                 if first == ~second or ~first == second:
                     return (
@@ -270,15 +269,16 @@ class Prover:
                 if isinstance(first, CompositePropositionNOT) and isinstance(
                     second, CompositePropositionNOT
                 ):
-                    proof, truth = Prover(self.assumptions, ~(first & second)).prove()
+                    sub_conclusion = ~(first & second)
+                    proof, truth = Prover(self.assumptions, sub_conclusion).prove()
                     if truth:
                         self.proof.extend(proof)
                         self.proof.add_step(
-                            self.conclusion, Equivalence.DeMorgensLaw, ~(first & second)
+                            self.conclusion, Equivalence.DeMorgensLaw, sub_conclusion
                         )
                         return self.proof, True
 
-            case CompositePropositionAND(first=first, second=second):
+            case CompositePropositionAND(first, second):
                 # Applying x & ~x <-> False
                 if first == ~second or ~first == second:
                     return Proof(), False
@@ -302,26 +302,27 @@ class Prover:
                 if isinstance(first, CompositePropositionNOT) and isinstance(
                     second, CompositePropositionNOT
                 ):
-                    proof, truth = Prover(self.assumptions, ~(first | second)).prove()
+                    sub_conclusion = ~(first | second)
+                    proof, truth = Prover(self.assumptions, sub_conclusion).prove()
                     if truth:
                         self.proof.extend(proof)
                         self.proof.add_step(
-                            self.conclusion, Equivalence.DeMorgensLaw, ~(first | second)
+                            self.conclusion, Equivalence.DeMorgensLaw, sub_conclusion
                         )
                         return self.proof, True
 
-            case CompositePropositionBICONDITIONAL(
-                assumption=assumption, conclusion=conclusion
-            ):
+            case CompositePropositionBICONDITIONAL(assumption, conclusion):
                 # Applying definition of Bi-Conditional
                 #  (p <-> q) -> (p -> q) & (q -> p)
+                assumption_implies_conclusion = IMPLY(assumption, conclusion)
+                conclusion_implies_assumption = IMPLY(conclusion, assumption)
                 proof_p_implies_q, truth_p_implies_q = Prover(
                     self.assumptions.remove(self.conclusion),
-                    IMPLY(assumption, conclusion),
+                    assumption_implies_conclusion,
                 ).prove()
                 proof_q_implies_p, truth_q_implies_p = Prover(
                     self.assumptions.remove(self.conclusion),
-                    IMPLY(conclusion, assumption),
+                    conclusion_implies_assumption,
                 ).prove()
                 if truth_p_implies_q and truth_q_implies_p:
                     self.proof.extend(proof_p_implies_q)
@@ -329,8 +330,8 @@ class Prover:
                     self.proof.add_step(
                         self.conclusion,
                         Equivalence.DefinitionOfBiConditional,
-                        IMPLY(assumption, conclusion),
-                        IMPLY(conclusion, assumption),
+                        assumption_implies_conclusion,
+                        conclusion_implies_assumption,
                     )
                     return self.proof, True
 
@@ -349,127 +350,150 @@ class Prover:
 
         for i in self.assumptions.with_proposition(self.conclusion):
             match i:
-                case CompositePropositionNOT(statement=statement):
-                    # Applying NotOfNot i.e. ~(~x) <-> x
+                case CompositePropositionNOT(statement):
                     if isinstance(statement, CompositePropositionNOT):
-                        if statement.statement != self.conclusion:
-                            if statement.statement not in self.assumptions:
-                                proof, truth = Prover(
-                                    self.assumptions.add(statement.statement),
-                                    self.conclusion,
-                                ).prove()
-                                if truth:
-                                    self.proof.add_step(
-                                        self.conclusion, Equivalence.NotOfNot, i
-                                    )
-                                    self.proof.extend(proof)
-                                    return self.proof, True
-                        else:
+                        # Applying NotOfNot i.e. ~(~x) <-> x
+                        sub_conclusion = statement.statement
+
+                        if sub_conclusion == self.conclusion:
+                            # x is the thing we want to prove
                             self.proof.add_step(
                                 self.conclusion, Equivalence.NotOfNot, i
                             )
                             return self.proof, True
 
-                    # Applying De'Morgan's Law
+                        if sub_conclusion not in self.assumptions:
+                            # x is not the thing we want to prove
+                            # so add it to the list of assumptions and continue
+                            proof, truth = Prover(
+                                self.assumptions.add(sub_conclusion),
+                                self.conclusion,
+                            ).prove()
+                            if truth:
+                                self.proof.add_step(
+                                    self.conclusion, Equivalence.NotOfNot, i
+                                )
+                                self.proof.extend(proof)
+                                return self.proof, True
+
                     match statement:
-                        case CompositePropositionAND(first=first, second=second):
-                            if (~first | ~second) != self.conclusion:
-                                if (~first | ~second) not in self.assumptions:
-                                    proof, truth = Prover(
-                                        self.assumptions.add(~first | ~second),
-                                        self.conclusion,
-                                    ).prove()
-                                    if truth:
-                                        self.proof.add_step(
-                                            self.conclusion, Equivalence.DeMorgensLaw, i
-                                        )
-                                        self.proof.extend(proof)
-                                        return proof, True
-                            else:
+                        # Applying De'Morgan's Law
+                        case CompositePropositionAND(first, second):
+                            sub_conclusion = ~first | ~second
+
+                            if sub_conclusion == self.conclusion:
+                                # sub_conclusion is the thing we want to prove
                                 self.proof.add_step(
                                     self.conclusion, Equivalence.DeMorgensLaw, i
                                 )
                                 return self.proof, True
 
-                        case CompositePropositionOR(first=first, second=second):
-                            if ~first & ~second != self.conclusion:
-                                if (~first & ~second) not in self.assumptions:
-                                    proof, truth = Prover(
-                                        self.assumptions.add(~first & ~second),
-                                        self.conclusion,
-                                    ).prove()
-                                    if truth:
-                                        self.proof.add_step(
-                                            self.conclusion, Equivalence.DeMorgensLaw, i
-                                        )
-                                        self.proof.extend(proof)
-                                        return self.proof, True
-                            else:
+                            if sub_conclusion not in self.assumptions:
+                                # sub_conclusion is not the thing we want to prove
+                                # so add it to the list of assumptions and continue
+                                proof, truth = Prover(
+                                    self.assumptions.add(sub_conclusion),
+                                    self.conclusion,
+                                ).prove()
+                                if truth:
+                                    self.proof.add_step(
+                                        self.conclusion, Equivalence.DeMorgensLaw, i
+                                    )
+                                    self.proof.extend(proof)
+                                    return proof, True
+
+                        case CompositePropositionOR(first, second):
+                            sub_conclusion = ~first & ~second
+
+                            if sub_conclusion == self.conclusion:
+                                # sub_conclusion is the thing we want to prove
                                 self.proof.add_step(
                                     self.conclusion, Equivalence.DeMorgensLaw, i
                                 )
                                 return self.proof, True
 
-                case CompositePropositionOR(first=first, second=second):
-                    # Applying Resolution
+                            if sub_conclusion not in self.assumptions:
+                                # sub_conclusion is not the thing we want to prove
+                                # so add it to the list of assumptions and continue
+                                proof, truth = Prover(
+                                    self.assumptions.add(sub_conclusion),
+                                    self.conclusion,
+                                ).prove()
+                                if truth:
+                                    self.proof.add_step(
+                                        self.conclusion, Equivalence.DeMorgensLaw, i
+                                    )
+                                    self.proof.extend(proof)
+                                    return self.proof, True
+
+                case CompositePropositionOR(first, second):
                     if isinstance(self.conclusion, CompositePropositionOR):
+                        # Applying Resolution
                         if self.conclusion.first == first:
+                            sub_conclusion = ~second | self.conclusion.second
                             proof, truth = Prover(
                                 self.assumptions.remove(i),
-                                ~second | self.conclusion.second,
+                                sub_conclusion,
                             ).prove()
                             self.proof.extend(proof)
                             self.proof.add_step(
                                 self.conclusion,
                                 RulesOfInference.Resolution,
                                 i,
-                                ~second | self.conclusion.second,
+                                sub_conclusion,
                             )
                             return self.proof, True
+
                         if self.conclusion.second == second:
+                            sub_conclusion = ~first | self.conclusion.first
                             proof, truth = Prover(
                                 self.assumptions.remove(i),
-                                ~first | self.conclusion.first,
+                                sub_conclusion,
                             ).prove()
                             self.proof.extend(proof)
                             self.proof.add_step(
                                 self.conclusion,
                                 RulesOfInference.Resolution,
                                 i,
-                                ~first | self.conclusion.first,
+                                sub_conclusion,
                             )
                             return self.proof, True
+
                         if self.conclusion.first == second:
+                            sub_conclusion = ~first | self.conclusion.second
                             proof, truth = Prover(
                                 self.assumptions.remove(i),
-                                ~first | self.conclusion.second,
+                                sub_conclusion,
                             ).prove()
                             self.proof.extend(proof)
                             self.proof.add_step(
                                 self.conclusion,
                                 RulesOfInference.Resolution,
                                 i,
-                                ~first | self.conclusion.second,
+                                sub_conclusion,
                             )
                             return self.proof, True
+
                         if self.conclusion.second == first:
+                            sub_conclusion = ~second | self.conclusion.first
                             proof, truth = Prover(
                                 self.assumptions.remove(i),
-                                ~second | self.conclusion.first,
+                                sub_conclusion,
                             ).prove()
                             self.proof.extend(proof)
                             self.proof.add_step(
                                 self.conclusion,
                                 RulesOfInference.Resolution,
                                 i,
-                                ~second | self.conclusion.first,
+                                sub_conclusion,
                             )
                             return self.proof, True
 
                     # Applying Disjunctive Syllogism
                     if self.conclusion == first:
+                        sub_conclusion = ~second
                         proof, truth = Prover(
-                            self.assumptions.remove(i), ~second
+                            self.assumptions.remove(i), sub_conclusion
                         ).prove()
                         if truth:
                             self.proof.extend(proof)
@@ -477,12 +501,13 @@ class Prover:
                                 self.conclusion,
                                 RulesOfInference.DisjunctiveSyllogism,
                                 i,
-                                ~second,
+                                sub_conclusion,
                             )
                             return self.proof, True
                     if self.conclusion == second:
+                        sub_conclusion = ~first
                         proof, truth = Prover(
-                            self.assumptions.remove(i), ~first
+                            self.assumptions.remove(i), sub_conclusion
                         ).prove()
                         if truth:
                             self.proof.extend(proof)
@@ -490,89 +515,89 @@ class Prover:
                                 self.conclusion,
                                 RulesOfInference.DisjunctiveSyllogism,
                                 i,
-                                ~first,
+                                sub_conclusion,
                             )
                             return self.proof, True
 
-                    # Applying De'Morgen's Law
                     if isinstance(first, CompositePropositionNOT) and isinstance(
                         second, CompositePropositionNOT
                     ):
-                        if ~(first.statement & second.statement) != self.conclusion:
-                            if not (
-                                ~(first.statement & second.statement)
-                                in self.assumptions
-                            ):
-                                proof, truth = Prover(
-                                    self.assumptions.add(
-                                        ~(first.statement & second.statement)
-                                    ),
-                                    self.conclusion,
-                                ).prove()
-                                if truth:
-                                    self.proof.add_step(
-                                        self.conclusion, Equivalence.DeMorgensLaw, i
-                                    )
-                                    self.proof.extend(proof)
-                                    return self.proof, True
-                        else:
+                        # Applying De'Morgen's Law
+                        sub_conclusion = ~(first.statement & second.statement)
+
+                        if sub_conclusion == self.conclusion:
+                            # sub_conclusion is the thing we want to prove
                             self.proof.add_step(
                                 self.conclusion, Equivalence.DeMorgensLaw, i
                             )
                             return self.proof, True
 
-                case CompositePropositionAND(first=first, second=second):
-                    # Applying De'Morgen's Law
-                    if isinstance(first, CompositePropositionNOT) and isinstance(
-                        second, CompositePropositionNOT
-                    ):
-                        if ~(first.statement | second.statement) != self.conclusion:
-                            if not (
-                                ~(first.statement | second.statement)
-                                in self.assumptions
-                            ):
-                                proof, truth = Prover(
-                                    self.assumptions.add(
-                                        ~(first.statement | second.statement)
-                                    ),
-                                    self.conclusion,
-                                ).prove()
-                                if truth:
-                                    self.proof.add_step(
-                                        self.conclusion, Equivalence.DeMorgensLaw, i
-                                    )
-                                    self.proof.extend(proof)
-                                    return self.proof, True
-                        else:
-                            self.proof.add_step(
-                                self.conclusion, Equivalence.DeMorgensLaw, i
-                            )
-                            return self.proof, True
-
-                    # Applying Simplification
-                    if self.conclusion not in (first, second):
-                        if (
-                            first not in self.assumptions
-                            or second not in self.assumptions
-                        ):
+                        if sub_conclusion not in self.assumptions:
+                            # sub_conclusion is not the thing we want to prove
+                            # so add it to the list of assumptions and continue
                             proof, truth = Prover(
-                                self.assumptions.add(first, second), self.conclusion
+                                self.assumptions.add(sub_conclusion),
+                                self.conclusion,
                             ).prove()
                             if truth:
                                 self.proof.add_step(
-                                    self.conclusion, RulesOfInference.Simplification, i
+                                    self.conclusion, Equivalence.DeMorgensLaw, i
                                 )
                                 self.proof.extend(proof)
                                 return self.proof, True
-                    else:
+
+                case CompositePropositionAND(first, second):
+                    if isinstance(first, CompositePropositionNOT) and isinstance(
+                        second, CompositePropositionNOT
+                    ):
+                        # Applying De'Morgen's Law
+                        sub_conclusion = ~(first.statement | second.statement)
+
+                        if sub_conclusion == self.conclusion:
+                            # sub_conclusion is the thing we want to prove
+                            self.proof.add_step(
+                                self.conclusion, Equivalence.DeMorgensLaw, i
+                            )
+                            return self.proof, True
+
+                        if sub_conclusion not in self.assumptions:
+                            # sub_conclusion is not the thing we want to prove
+                            # so add it to the list of assumptions and continue
+                            proof, truth = Prover(
+                                self.assumptions.add(sub_conclusion),
+                                self.conclusion,
+                            ).prove()
+                            if truth:
+                                self.proof.add_step(
+                                    self.conclusion, Equivalence.DeMorgensLaw, i
+                                )
+                                self.proof.extend(proof)
+                                return self.proof, True
+
+                    # Applying Simplification
+                    if self.conclusion in (first, second):
+                        # first or second is the thing we want to prove
                         self.proof.add_step(
                             self.conclusion, RulesOfInference.Simplification, i
                         )
                         return self.proof, True
 
-                case CompositePropositionCONDITIONAL(
-                    assumption=assumption, conclusion=conclusion
-                ):
+                    if not (
+                        (first in self.assumptions) and (second in self.assumptions)
+                    ):
+                        # first or second is not the thing we want to prove
+                        # so add it to the list of assumptions and continue
+                        proof, truth = Prover(
+                            self.assumptions.add(first, second), self.conclusion
+                        ).prove()
+                        if truth:
+                            self.proof.add_step(
+                                self.conclusion, RulesOfInference.Simplification, i
+                            )
+                            self.proof.extend(proof)
+                            return self.proof, True
+
+                case CompositePropositionCONDITIONAL(assumption, conclusion):
                     # Applying Modus Ponens
                     if (
                         conclusion not in self.assumptions
@@ -587,15 +612,18 @@ class Prover:
                             self.proof.add_step(
                                 conclusion, RulesOfInference.ModusPonens, i, assumption
                             )
-                            if self.conclusion != conclusion:
-                                proof, truth = Prover(
-                                    self.assumptions.remove(i).add(conclusion),
-                                    self.conclusion,
-                                ).prove()
-                                if truth:
-                                    self.proof.extend(proof)
-                                    return self.proof, True
-                            else:
+                            if self.conclusion == conclusion:
+                                # conclusion is the thing we want to prove
+                                return self.proof, True
+
+                            # conclusion is not the thing we want to prove
+                            # so add it to the list of assumptions and continue
+                            proof, truth = Prover(
+                                self.assumptions.remove(i).add(conclusion),
+                                self.conclusion,
+                            ).prove()
+                            if truth:
+                                self.proof.extend(proof)
                                 return self.proof, True
 
                     # Applying Modus Tollens
@@ -616,22 +644,29 @@ class Prover:
                                 ~conclusion,
                             )
                             if self.conclusion != ~assumption:
-                                proof, truth = Prover(
-                                    self.assumptions.remove(i).add(~assumption),
-                                    self.conclusion,
-                                ).prove()
-                                if truth:
-                                    self.proof.extend(proof)
-                                    return self.proof, True
-                            else:
+                                # ~assumption is the thing we want to prove
+                                return self.proof, True
+
+                            # ~assumption is not the thing we want to prove
+                            # so add it to the list of assumptions and continue
+                            proof, truth = Prover(
+                                self.assumptions.remove(i).add(~assumption),
+                                self.conclusion,
+                            ).prove()
+                            if truth:
+                                self.proof.extend(proof)
                                 return self.proof, True
 
                     # Applying Hypothetical Syllogism
                     if isinstance(self.conclusion, CompositePropositionCONDITIONAL):
                         if self.conclusion.conclusion == conclusion:
+                            sub_conclusion = IMPLY(
+                                self.conclusion.assumption, assumption
+                            )
+
                             proof, truth = Prover(
                                 self.assumptions.remove(i),
-                                IMPLY(self.conclusion.assumption, assumption),
+                                sub_conclusion,
                             ).prove()
                             if truth:
                                 self.proof.extend(proof)
@@ -639,13 +674,11 @@ class Prover:
                                     self.conclusion,
                                     RulesOfInference.HypotheticalSyllogism,
                                     i,
-                                    IMPLY(self.conclusion.assumption, assumption),
+                                    sub_conclusion,
                                 )
                                 return self.proof, True
 
-                case CompositePropositionBICONDITIONAL(
-                    assumption=assumption, conclusion=conclusion
-                ):
+                case CompositePropositionBICONDITIONAL(assumption, conclusion):
                     # Applying definition of Bi-Conditional
                     #  (p <-> q) -> (p -> q) & (q -> p)
                     if (
@@ -657,9 +690,9 @@ class Prover:
                         )
                         return self.proof, True
 
-                    if (
-                        IMPLY(assumption, conclusion) not in self.assumptions
-                        or IMPLY(conclusion, assumption) not in self.assumptions
+                    if not (
+                        IMPLY(assumption, conclusion) in self.assumptions
+                        and IMPLY(conclusion, assumption) in self.assumptions
                     ):
                         proof, truth = Prover(
                             self.assumptions.remove(i).add(
