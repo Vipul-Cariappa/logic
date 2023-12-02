@@ -245,7 +245,7 @@ class Environment:
 
                 # Applying Addition
                 proof_first, truth_first = prove(
-                    self.assumptions.remove(to_prove), first
+                    self.assumptions, first
                 )
                 if truth_first:
                     my_proof.extend(proof_first)
@@ -254,7 +254,7 @@ class Environment:
                     )
                     return my_proof, True
                 proof_second, truth_second = prove(
-                    self.assumptions.remove(to_prove), second
+                    self.assumptions, second
                 )
                 if truth_second:
                     my_proof.extend(proof_second)
@@ -283,10 +283,10 @@ class Environment:
 
                 # Applying Conjunction
                 proof_first, truth_first = prove(
-                    self.assumptions.remove(to_prove), first
+                    self.assumptions, first
                 )
                 proof_second, truth_second = prove(
-                    self.assumptions.remove(to_prove), second
+                    self.assumptions, second
                 )
                 if truth_first and truth_second:
                     my_proof.extend(proof_first)
@@ -315,11 +315,11 @@ class Environment:
                 assumption_implies_conclusion = IMPLY(assumption, conclusion)
                 conclusion_implies_assumption = IMPLY(conclusion, assumption)
                 proof_p_implies_q, truth_p_implies_q = prove(
-                    self.assumptions.remove(to_prove),
+                    self.assumptions,
                     assumption_implies_conclusion,
                 )
                 proof_q_implies_p, truth_q_implies_p = prove(
-                    self.assumptions.remove(to_prove),
+                    self.assumptions,
                     conclusion_implies_assumption,
                 )
                 if truth_p_implies_q and truth_q_implies_p:
@@ -619,7 +619,7 @@ class Environment:
                                 i,
                                 ~conclusion,
                             )
-                            if to_prove != ~assumption:
+                            if to_prove == ~assumption:
                                 # ~assumption is the thing we want to prove
                                 return my_proof, True
 

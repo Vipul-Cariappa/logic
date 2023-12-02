@@ -287,8 +287,8 @@ class TestProver(unittest.TestCase):
         b = Proposition("b", "Superman is willing to prevent evil")
         c = Proposition("c", "Superman is impotent")
         d = Proposition("d", "Superman is malevolent")
-        e = Proposition("f", "Superman prevents evil")
-        f = Proposition("g", "Superman exists")
+        e = Proposition("e", "Superman prevents evil")
+        f = Proposition("f", "Superman exists")
 
         assumptions = [
             IMPLY(a & b, e),
