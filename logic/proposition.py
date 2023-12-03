@@ -103,6 +103,38 @@ class Proposition(Statement):
 
 
 @dataclass(frozen=True)
+class Predicate(Statement):
+    """Representation of a Predicate"""
+
+    name: str
+    variables: tuple[str, ...]
+    statement: str = ""
+
+    def remove_conditionals(self) -> StatementT:
+        return self
+
+    def simplify(self) -> StatementT:
+        return self
+
+    def extract(self) -> list[PropositionT]:
+        return []
+
+    def __contains__(self, key: Any) -> bool:
+        if not isinstance(key, Statement):
+            raise TypeError(
+                f"Cannot perform in operation of {type(self)} with {type(key)}"
+            )
+
+        if isinstance(key, Predicate):
+            return self == key
+
+        return False
+
+    def __str__(self) -> str:
+        return f"{self.name}(" + ", ".join(self.variables) + ")"
+
+
+@dataclass(frozen=True)
 class CompositeProposition(Statement):
     """Representation of a Proposition constructed with some operator"""
 
@@ -311,6 +343,64 @@ class CompositePropositionBICONDITIONAL(CompositeProposition):
         return False
 
 
+@dataclass(frozen=True)
+class CompositePredicate(Statement):
+    """Representation of a Predicate constructed with some operator"""
+
+    def remove_conditionals(self) -> StatementT:
+        return self
+
+    def simplify(self) -> StatementT:
+        return self
+
+    def extract(self) -> list[PropositionT]:
+        return []
+
+
+@dataclass(frozen=True)
+class CompositePredicateForAll(CompositePredicate):
+    """Representation of ∀x.P(x)"""
+
+    variable: str
+    predicate: Predicate | CompositePredicate
+
+    def __contains__(self, key: Any) -> bool:
+        if not isinstance(key, Statement):
+            raise TypeError(
+                f"Cannot perform in operation of {type(self)} with {type(key)}"
+            )
+
+        if isinstance(key, CompositePredicateForAll):
+            return self == key
+
+        return False
+
+    def __str__(self) -> str:
+        return f"∀{self.variable}.{str(self.predicate)}"
+
+
+@dataclass(frozen=True)
+class CompositePredicateThereExists(CompositePredicate):
+    """Representation of ∃x.P(x)"""
+
+    variable: str
+    predicate: Predicate | CompositePredicate
+
+    def __contains__(self, key: Any) -> bool:
+        if not isinstance(key, Statement):
+            raise TypeError(
+                f"Cannot perform in operation of {type(self)} with {type(key)}"
+            )
+
+        if isinstance(key, CompositePredicateForAll):
+            return self == key
+
+        return False
+
+    def __str__(self) -> str:
+        return f"∃{self.variable}.{str(self.predicate)}"
+
+
 def AND(
     first: Statement, second: Statement, *others: Statement
 ) -> CompositePropositionAND:
@@ -390,3 +480,35 @@ def IFF(
         CompositePropositionBICONDITIONAL: Bi-Conditional Proposition
     """
     return CompositePropositionBICONDITIONAL(assumption, conclusion)
+
+
+def FORALL(
+    variable: str, predicate: Predicate | CompositePredicate
+) -> CompositePredicateForAll:
+    """Construct Composite Predicate with ∀ as the operator
+    i.e. for all
+
+    Args:
+        variable (str): variable name should match with the predicate's argument
+        predicate (Predicate | CompositePredicate): predicate to apply on
+
+    Returns:
+        CompositePredicate: For All Predicate
+    """
+    return CompositePredicateForAll(variable, predicate)
+
+
+def THEREEXISTS(
+    variable: str, predicate: Predicate | CompositePredicate
+) -> CompositePredicateThereExists:
+    """Construct Composite Predicate with ∃ as the operator
+    i.e. there exists
+
+    Args:
+        variable (str): variable name should match with the predicate's argument
+        predicate (Predicate | CompositePredicate): predicate to apply on
+
+    Returns:
+        CompositePredicate: There Exists Predicate
+    """
+    return CompositePredicateThereExists(variable, predicate)
