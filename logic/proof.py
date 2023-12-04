@@ -11,8 +11,13 @@ from .proposition import (
     CompositePropositionCONDITIONAL,
     CompositePropositionNOT,
     CompositePropositionOR,
+    Predicate,
+    CompositePredicateForAll,
+    CompositePredicateThereExists,
     Statement,
 )
+
+from .utils import universal_instantiation, existential_instantiation
 
 AssumptionT: TypeAlias = "Assumption"
 ProofT: TypeAlias = "Proof"
@@ -45,6 +50,10 @@ class RulesOfInference(Enum):
     Simplification = "Simplification"
     Conjunction = "Conjunction"
     Resolution = "Resolution"
+    UniversalInstantiation = "Universal Instantiation"
+    UniversalGeneralization = "Universal Generalization"
+    ExistentialInstantiation = "Existential Instantiation"
+    ExistentialGeneralization = "Existential Generalization"
 
     def __str__(self) -> str:
         return self.value
@@ -244,18 +253,14 @@ class Environment:
                     )
 
                 # Applying Addition
-                proof_first, truth_first = prove(
-                    self.assumptions, first
-                )
+                proof_first, truth_first = prove(self.assumptions, first)
                 if truth_first:
                     my_proof.extend(proof_first)
                     my_proof.add_step(
                         to_prove, RulesOfInference.Addition, first, second
                     )
                     return my_proof, True
-                proof_second, truth_second = prove(
-                    self.assumptions, second
-                )
+                proof_second, truth_second = prove(self.assumptions, second)
                 if truth_second:
                     my_proof.extend(proof_second)
                     my_proof.add_step(
@@ -282,12 +287,8 @@ class Environment:
                     return Proof(), False
 
                 # Applying Conjunction
-                proof_first, truth_first = prove(
-                    self.assumptions, first
-                )
-                proof_second, truth_second = prove(
-                    self.assumptions, second
-                )
+                proof_first, truth_first = prove(self.assumptions, first)
+                proof_second, truth_second = prove(self.assumptions, second)
                 if truth_first and truth_second:
                     my_proof.extend(proof_first)
                     my_proof.extend(proof_second)
@@ -352,7 +353,56 @@ class Environment:
 
         for i in self.assumptions.with_proposition(to_prove):
             match i:
+                case CompositePredicateForAll(_, predicate):
+                    # Applying Universal Instantiation
+                    if isinstance(predicate, Predicate) and isinstance(
+                        to_prove, Predicate
+                    ):
+                        if to_prove == predicate(*to_prove.variables):
+                            my_proof.add_step(
+                                to_prove, RulesOfInference.UniversalInstantiation, i
+                            )
+                            return my_proof, True
+
+                    universal_instantiation_statement = universal_instantiation(i)
+                    if universal_instantiation_statement not in self.assumptions:
+                        proof, truth = prove(
+                            self.assumptions.add(universal_instantiation_statement),
+                            to_prove,
+                        )
+                        if truth:
+                            my_proof.add_step(
+                                universal_instantiation_statement,
+                                RulesOfInference.UniversalInstantiation,
+                                i,
+                            )
+                            my_proof.extend(proof)
+                            return my_proof, True
+
+                    # TODO: Apply Demorgans Law
+
+                case CompositePredicateThereExists(_, predicate):
+                    # Applying Existential Instantiation
+                    existential_instantiation_statement = existential_instantiation(i)
+                    if existential_instantiation_statement not in self.assumptions:
+                        proof, truth = prove(
+                            self.assumptions.add(existential_instantiation_statement),
+                            to_prove,
+                        )
+                        if truth:
+                            my_proof.add_step(
+                                existential_instantiation_statement,
+                                RulesOfInference.ExistentialInstantiation,
+                                i,
+                            )
+                            my_proof.extend(proof)
+                            return my_proof, True
+
+                    # TODO: Apply Demorgans Law
+
                 case CompositePropositionNOT(statement):
+                    # TODO: Apply Demorgans Law for Predicates
+
                     if isinstance(statement, CompositePropositionNOT):
                         # Applying NotOfNot i.e. ~(~x) <-> x
                         sub_conclusion = statement.statement
@@ -571,8 +621,9 @@ class Environment:
                             self.assumptions.add(first, second), to_prove
                         )
                         if truth:
+                            my_proof.add_step(first, RulesOfInference.Simplification, i)
                             my_proof.add_step(
-                                to_prove, RulesOfInference.Simplification, i
+                                second, RulesOfInference.Simplification, i
                             )
                             my_proof.extend(proof)
                             return my_proof, True
