@@ -2,8 +2,8 @@
 and operation between propositions"""
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
-from typing import Any, TypeAlias
+from dataclasses import dataclass, field
+from typing import Any, TypeAlias, Union
 from warnings import warn
 
 PropositionT: TypeAlias = "Proposition"
@@ -66,33 +66,31 @@ class Statement(ABC):
             StatementT: instantiated statement
         """
 
-    # @abstractmethod
-    # def universal_generalization(
-    #     self, variable: PropositionT | ArbitraryBoundVariableT | SpecificBoundVariableT
-    # ) -> StatementT:
-    #     """Generalize the given predicate
+    @abstractmethod
+    def universal_generalization(self, variable: ArbitraryBoundVariableT) -> StatementT:
+        """Generalize the given predicate
 
-    #     Args:
-    #         variable (PropositionT | ArbitraryBoundVariableT | SpecificBoundVariableT):
-    #           variable to generalize
+        Args:
+            variable (ArbitraryBoundVariableT):
+              variable to generalize
 
-    #     Returns:
-    #         StatementT: generalized statement
-    #     """
+        Returns:
+            StatementT: generalized statement
+        """
 
-    # @abstractmethod
-    # def existential_generalization(
-    #     self, variable: PropositionT | ArbitraryBoundVariableT | SpecificBoundVariableT
-    # ) -> StatementT:
-    #     """Generalize the given predicate
+    @abstractmethod
+    def existential_generalization(
+        self, variable: Union[ArbitraryBoundVariableT, SpecificBoundVariableT]
+    ) -> StatementT:
+        """Generalize the given predicate
 
-    #     Args:
-    #         variable (PropositionT | ArbitraryBoundVariableT | SpecificBoundVariableT):
-    #           variable to generalize
+        Args:
+            variable (Union[ArbitraryBoundVariableT, SpecificBoundVariableT]):
+              variable to generalize
 
-    #     Returns:
-    #         StatementT: generalized statement
-    #     """
+        Returns:
+            StatementT: generalized statement
+        """
 
     @abstractmethod
     def __contains__(self, key: Any) -> bool:
@@ -136,6 +134,14 @@ class Proposition(Statement):
         return self
 
     def existential_instantiation(self, *_: Any) -> StatementT:
+        return self
+
+    def universal_generalization(self, variable: ArbitraryBoundVariableT) -> StatementT:
+        return self
+
+    def existential_generalization(
+        self, variable: Union[ArbitraryBoundVariableT, SpecificBoundVariableT]
+    ) -> StatementT:
         return self
 
     def __str__(self) -> str:
@@ -197,7 +203,8 @@ class Predicate(Statement):
         return Predicate(self.name, tuple(result_variables), self.statement)
 
     def existential_instantiation(self, variable: str, new_variable: str) -> StatementT:
-        updated_variable = SpecificBoundVariable(new_variable)
+        var, post = new_variable.split(" ")
+        updated_variable = SpecificBoundVariable(var, post)
         result_variables: list[str | StatementT] = []
         for i in self.variables:
             if isinstance(i, str) and i == variable:
@@ -205,6 +212,38 @@ class Predicate(Statement):
             else:
                 result_variables.append(i)
         return Predicate(self.name, tuple(result_variables), self.statement)
+
+    def universal_generalization(self, variable: ArbitraryBoundVariableT) -> StatementT:
+        updated_variable = Proposition(variable.variable)
+        result_variables: list[str | StatementT] = []
+        for i in self.variables:
+            if isinstance(i, ArbitraryBoundVariable) and i == variable:
+                result_variables.append(updated_variable)
+            else:
+                result_variables.append(i)
+
+        return CompositePredicateForAll(
+            variable.variable,
+            Predicate(self.name, tuple(result_variables), self.statement),
+        )
+
+    def existential_generalization(
+        self, variable: Union[ArbitraryBoundVariableT, SpecificBoundVariableT]
+    ) -> StatementT:
+        updated_variable = Proposition(variable.variable)
+        result_variables: list[str | StatementT] = []
+        for i in self.variables:
+            if isinstance(i, ArbitraryBoundVariable) and i == variable:
+                result_variables.append(updated_variable)
+            elif isinstance(i, SpecificBoundVariable) and i == variable:
+                result_variables.append(updated_variable)
+            else:
+                result_variables.append(i)
+
+        return CompositePredicateThereExists(
+            variable.variable,
+            Predicate(self.name, tuple(result_variables), self.statement),
+        )
 
     def __contains__(self, key: Any) -> bool:
         if not isinstance(key, Statement):
@@ -215,7 +254,15 @@ class Predicate(Statement):
         if isinstance(key, Predicate):
             return self.name == key.name
 
-        return key in self.variables
+        for i in self.variables:
+            if isinstance(i, str):
+                if key == Proposition(i):
+                    return True
+                continue
+            if key == i:
+                return True
+
+        return False
 
     def __call__(self, *args: str | Statement) -> PredicateT:
         if len(args) != len(self.variables):
@@ -261,6 +308,20 @@ class CompositePropositionAND(CompositeProposition):
         return AND(
             self.first.existential_instantiation(variable, new_variable),
             self.second.existential_instantiation(variable, new_variable),
+        )
+
+    def universal_generalization(self, variable: ArbitraryBoundVariableT) -> StatementT:
+        return AND(
+            self.first.universal_generalization(variable),
+            self.second.universal_generalization(variable),
+        )
+
+    def existential_generalization(
+        self, variable: Union[ArbitraryBoundVariableT, SpecificBoundVariableT]
+    ) -> StatementT:
+        return AND(
+            self.first.existential_generalization(variable),
+            self.second.existential_generalization(variable),
         )
 
     def __str__(self) -> str:
@@ -313,6 +374,20 @@ class CompositePropositionOR(CompositeProposition):
             self.second.existential_instantiation(variable, new_variable),
         )
 
+    def universal_generalization(self, variable: ArbitraryBoundVariableT) -> StatementT:
+        return OR(
+            self.first.universal_generalization(variable),
+            self.second.universal_generalization(variable),
+        )
+
+    def existential_generalization(
+        self, variable: Union[ArbitraryBoundVariableT, SpecificBoundVariableT]
+    ) -> StatementT:
+        return OR(
+            self.first.existential_generalization(variable),
+            self.second.existential_generalization(variable),
+        )
+
     def __str__(self) -> str:
         return f"({self.first} ∨ {self.second})"
 
@@ -353,6 +428,14 @@ class CompositePropositionNOT(CompositeProposition):
 
     def existential_instantiation(self, variable: str, new_variable: str) -> StatementT:
         return NOT(self.statement.existential_instantiation(variable, new_variable))
+
+    def universal_generalization(self, variable: ArbitraryBoundVariableT) -> StatementT:
+        return NOT(self.statement.universal_generalization(variable))
+
+    def existential_generalization(
+        self, variable: Union[ArbitraryBoundVariableT, SpecificBoundVariableT]
+    ) -> StatementT:
+        return NOT(self.statement.existential_generalization(variable))
 
     def __str__(self) -> str:
         return f"¬ ({self.statement})"
@@ -401,6 +484,20 @@ class CompositePropositionCONDITIONAL(CompositeProposition):
         return IMPLY(
             self.assumption.existential_instantiation(variable, new_variable),
             self.conclusion.existential_instantiation(variable, new_variable),
+        )
+
+    def universal_generalization(self, variable: ArbitraryBoundVariableT) -> StatementT:
+        return IMPLY(
+            self.assumption.universal_generalization(variable),
+            self.conclusion.universal_generalization(variable),
+        )
+
+    def existential_generalization(
+        self, variable: Union[ArbitraryBoundVariableT, SpecificBoundVariableT]
+    ) -> StatementT:
+        return IMPLY(
+            self.assumption.existential_generalization(variable),
+            self.conclusion.existential_generalization(variable),
         )
 
     def __str__(self) -> str:
@@ -458,6 +555,20 @@ class CompositePropositionBICONDITIONAL(CompositeProposition):
         return IFF(
             self.assumption.existential_instantiation(variable, new_variable),
             self.conclusion.existential_instantiation(variable, new_variable),
+        )
+
+    def universal_generalization(self, variable: ArbitraryBoundVariableT) -> StatementT:
+        return IFF(
+            self.assumption.universal_generalization(variable),
+            self.conclusion.universal_generalization(variable),
+        )
+
+    def existential_generalization(
+        self, variable: Union[ArbitraryBoundVariableT, SpecificBoundVariableT]
+    ) -> StatementT:
+        return IFF(
+            self.assumption.existential_generalization(variable),
+            self.conclusion.existential_generalization(variable),
         )
 
     def __str__(self) -> str:
@@ -526,6 +637,18 @@ class ArbitraryBoundVariable(Statement):
     def existential_instantiation(self, *_: Any) -> StatementT:
         return self
 
+    def universal_generalization(self, variable: ArbitraryBoundVariableT) -> StatementT:
+        if self == variable:
+            return Proposition(self.variable)
+        return self
+
+    def existential_generalization(
+        self, variable: Union[ArbitraryBoundVariableT, SpecificBoundVariableT]
+    ) -> StatementT:
+        if isinstance(self, ArbitraryBoundVariable) and self == variable:
+            return Proposition(self.variable)
+        return self
+
     def __contains__(self, key) -> bool:
         if isinstance(key, (ArbitraryBoundVariable, SpecificBoundVariable)):
             return True
@@ -537,6 +660,19 @@ class ArbitraryBoundVariable(Statement):
 
         return False
 
+    def __eq__(self, other: Any) -> bool:
+        if isinstance(other, Statement):
+            if isinstance(other, ArbitraryBoundVariable):
+                return self.variable == other.variable
+            return False
+
+        if isinstance(other, str):
+            return self.variable == other
+
+        raise TypeError(
+            f"Cannot perform equality check of {type(self)} and {type(other)}"
+        )
+
     def __str__(self) -> str:
         return f"{self.variable}'"
 
@@ -547,6 +683,7 @@ class SpecificBoundVariable(Statement):
     i.e. to represent x₁ in ∃x.P(x) to P(x₁)"""
 
     variable: str
+    postfix: str = field(hash=False)
 
     def remove_conditionals(self) -> StatementT:
         return self
@@ -563,6 +700,18 @@ class SpecificBoundVariable(Statement):
     def existential_instantiation(self, *_: Any) -> StatementT:
         return self
 
+    def universal_generalization(self, variable: ArbitraryBoundVariableT) -> StatementT:
+        if self == variable:
+            return Proposition(self.variable)
+        return self
+
+    def existential_generalization(
+        self, variable: Union[ArbitraryBoundVariableT, SpecificBoundVariableT]
+    ) -> StatementT:
+        if isinstance(self, SpecificBoundVariable) and self == variable:
+            return Proposition(self.variable)
+        return self
+
     def __contains__(self, key) -> bool:
         if isinstance(key, SpecificBoundVariable):
             return self == key
@@ -574,8 +723,21 @@ class SpecificBoundVariable(Statement):
 
         return False
 
+    def __eq__(self, other: Any) -> bool:
+        if isinstance(other, Statement):
+            if isinstance(other, SpecificBoundVariable):
+                return self.variable == other.variable
+            return False
+
+        if isinstance(other, str):
+            return self.variable == other
+
+        raise TypeError(
+            f"Cannot perform equality check of {type(self)} and {type(other)}"
+        )
+
     def __str__(self) -> str:
-        return f"{self.variable}"
+        return f"{self.variable}{self.postfix}"
 
 
 @dataclass(frozen=True)
@@ -594,6 +756,19 @@ class CompositePredicateForAll(CompositePredicate):
         return CompositePredicateForAll(
             self.variable,
             self.predicate.existential_instantiation(variable, new_variable),
+        )
+
+    def universal_generalization(self, variable: ArbitraryBoundVariableT) -> StatementT:
+        return CompositePredicateForAll(
+            self.variable, self.predicate.universal_generalization(variable)
+        )
+
+    def existential_generalization(
+        self, variable: Union[ArbitraryBoundVariableT, SpecificBoundVariableT]
+    ) -> StatementT:
+        return CompositePredicateForAll(
+            self.variable,
+            self.predicate.existential_generalization(variable),
         )
 
     def __contains__(self, key: Any) -> bool:
@@ -624,6 +799,19 @@ class CompositePredicateThereExists(CompositePredicate):
         return CompositePredicateThereExists(
             self.variable,
             self.predicate.existential_instantiation(variable, new_variable),
+        )
+
+    def universal_generalization(self, variable: ArbitraryBoundVariableT) -> StatementT:
+        return CompositePredicateThereExists(
+            self.variable, self.predicate.universal_generalization(variable)
+        )
+
+    def existential_generalization(
+        self, variable: Union[ArbitraryBoundVariableT, SpecificBoundVariableT]
+    ) -> StatementT:
+        return CompositePredicateThereExists(
+            self.variable,
+            self.predicate.existential_generalization(variable),
         )
 
     def __contains__(self, key: Any) -> bool:

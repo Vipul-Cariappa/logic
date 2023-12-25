@@ -2,7 +2,8 @@
 
 import unittest
 
-from logic import IFF, IMPLY, prove, Proposition
+from logic import IFF, IMPLY, prove, Proposition, Predicate, FORALL, THEREEXISTS
+from logic.utils import existential_instantiation, universal_instantiation
 
 # TODO: check proof
 
@@ -17,6 +18,7 @@ class TestProver(unittest.TestCase):
         self.p = Proposition("p")
         self.q = Proposition("q")
         self.r = Proposition("r")
+        self.P = Predicate("P", ("a",))
 
     def test_prover_modus_ponens(self):
         """Tests the Modus Ponens rule of inference"""
@@ -304,6 +306,40 @@ class TestProver(unittest.TestCase):
             conclusion,
         )
         self.assertTrue(truth)
+
+    def test_prove_predicate_logic(self):
+        """Tests the Universal and Existential
+        Instantiation and Generalization"""
+
+        Pa_specific = existential_instantiation(THEREEXISTS("a", self.P))
+        Pa_any = universal_instantiation(FORALL("a", self.P))
+
+        _, is_true = prove([Pa_any], THEREEXISTS("a", self.P))
+        self.assertTrue(is_true)
+
+        _, is_true = prove([Pa_any], FORALL("a", self.P))
+        self.assertTrue(is_true)
+
+        _, is_true = prove([Pa_specific], THEREEXISTS("a", self.P))
+        self.assertTrue(is_true)
+
+        # False
+        _, is_true = prove([Pa_specific], FORALL("a", self.P))
+        self.assertFalse(is_true)
+
+        _, is_true = prove([FORALL("a", self.P)], self.P(self.x))
+        self.assertTrue(is_true)
+
+        _, is_true = prove([FORALL("a", self.P)], self.P)
+        self.assertTrue(is_true)
+
+        # False
+        _, is_true = prove([THEREEXISTS("a", self.P)], self.P(self.x))
+        self.assertFalse(is_true)
+
+        # False
+        _, is_true = prove([THEREEXISTS("a", self.P)], self.P)
+        self.assertFalse(is_true)
 
 
 if __name__ == "__main__":

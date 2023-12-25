@@ -130,6 +130,24 @@ class Assumption:
         """
         return Assumption(self.assumptions.union({*statement}))
 
+    def get(self, statement: Statement) -> Statement:
+        """
+        Returns the statement
+
+        Args:
+            statement (Statement): statement to find
+
+        Raises:
+            ValueError: if statement not found
+
+        Returns:
+            Statement: found statement
+        """
+        for i in self.assumptions:
+            if i == statement:
+                return i
+        raise ValueError("Given statement not found un the assumptions")
+
 
 class Proof:
     """Class to create, operate and verify on a proof"""
@@ -199,6 +217,73 @@ class Environment:
         my_proof = Proof()
 
         match to_prove:
+            case CompositePredicateForAll():
+                universal_instantiation_statement = universal_instantiation(to_prove)
+                if universal_instantiation_statement in self.assumptions:
+                    my_proof.add_step(
+                        to_prove,
+                        RulesOfInference.UniversalGeneralization,
+                        self.assumptions.get(universal_instantiation_statement),
+                    )
+                    return my_proof, True
+
+                proof, truth = prove(
+                    self.assumptions, universal_instantiation_statement
+                )
+                if truth:
+                    my_proof.extend(proof)
+                    my_proof.add_step(
+                        to_prove,
+                        RulesOfInference.UniversalGeneralization,
+                        universal_instantiation_statement,
+                    )
+                    return my_proof, True
+
+            case CompositePredicateThereExists():
+                existential_instantiation_statement = existential_instantiation(
+                    to_prove
+                )
+                if existential_instantiation_statement in self.assumptions:
+                    my_proof.add_step(
+                        to_prove,
+                        RulesOfInference.ExistentialGeneralization,
+                        self.assumptions.get(existential_instantiation_statement),
+                    )
+                    return my_proof, True
+
+                proof, truth = prove(
+                    self.assumptions, existential_instantiation_statement
+                )
+                if truth:
+                    my_proof.extend(proof)
+                    my_proof.add_step(
+                        to_prove,
+                        RulesOfInference.ExistentialGeneralization,
+                        existential_instantiation_statement,
+                    )
+                    return my_proof, True
+
+                universal_instantiation_statement = universal_instantiation(to_prove)
+                if universal_instantiation_statement in self.assumptions:
+                    my_proof.add_step(
+                        to_prove,
+                        RulesOfInference.ExistentialGeneralization,
+                        self.assumptions.get(universal_instantiation_statement),
+                    )
+                    return my_proof, True
+
+                proof, truth = prove(
+                    self.assumptions, universal_instantiation_statement
+                )
+                if truth:
+                    my_proof.extend(proof)
+                    my_proof.add_step(
+                        to_prove,
+                        RulesOfInference.ExistentialGeneralization,
+                        universal_instantiation_statement,
+                    )
+                    return my_proof, True
+
             case CompositePropositionNOT(statement=statement):
                 # Applying NotOfNot i.e. ~(~x) <-> x
                 if isinstance(statement, CompositePropositionNOT):
@@ -374,6 +459,21 @@ class Environment:
                             my_proof.add_step(
                                 universal_instantiation_statement,
                                 RulesOfInference.UniversalInstantiation,
+                                i,
+                            )
+                            my_proof.extend(proof)
+                            return my_proof, True
+
+                    existential_instantiation_statement = existential_instantiation(i)
+                    if existential_instantiation_statement not in self.assumptions:
+                        proof, truth = prove(
+                            self.assumptions.add(existential_instantiation_statement),
+                            to_prove,
+                        )
+                        if truth:
+                            my_proof.add_step(
+                                existential_instantiation_statement,
+                                RulesOfInference.ExistentialInstantiation,
                                 i,
                             )
                             my_proof.extend(proof)
