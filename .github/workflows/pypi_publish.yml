@@ -14,11 +14,13 @@ jobs:
     permissions:
       id-token: write
     steps:
+    - uses: actions/checkout@v3
+    
     - name: Install dependencies
       run: pip install --upgrade build
 
     - name: Build package
-      run: pwd && ls -la && cd .. && python -m build
+      run: python -m build
 
     - name: Publish package distributions to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
