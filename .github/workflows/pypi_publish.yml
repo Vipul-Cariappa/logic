@@ -15,10 +15,10 @@ jobs:
       id-token: write
     steps:
     - name: Install dependencies
-      run: pip install --upgrade build && cd ..
+      run: pip install --upgrade build
 
     - name: Build package
-      run: python -m build
+      run: pwd && ls -la && cd .. && python -m build
 
     - name: Publish package distributions to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
