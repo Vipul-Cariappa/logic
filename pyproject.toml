@@ -1,5 +1,5 @@
 [project]
-name = "logic"
+name = "py-logic"
 version = "0.0.1"
 authors = [{ name = "Vipul Cariappa", email = "vipulcariappa@gmailcom" }]
 description = "Library to use and simulate propositional logic"
