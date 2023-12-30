@@ -7,7 +7,7 @@ Logic is a predicate logic simulator. It can be used to create automated proof.
 Install using pip with the git url
 
 ```bash
-pip install git+https://github.com/Vipul-Cariappa/logic
+pip install py-logic
 ```
 
 ## Example Usage
