@@ -1,7 +1,7 @@
 [project]
 name = "py-logic"
 version = "0.1.0"
-authors = [{ name = "Vipul Cariappa", email = "vipulcariappa@gmailcom" }]
+authors = [{ name = "Vipul Cariappa", email = "vipulcariappa@gmail.com" }]
 description = "Library to use and simulate propositional logic"
 readme = "README.md"
 requires-python = ">=3.10"
