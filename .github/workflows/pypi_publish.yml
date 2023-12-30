@@ -15,7 +15,7 @@ jobs:
       id-token: write
     steps:
     - name: Install dependencies
-      run: pip install --upgrade build
+      run: pip install --upgrade build && cd ..
 
     - name: Build package
       run: python -m build
