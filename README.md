@@ -2,6 +2,8 @@
 
 Logic is a predicate logic simulator. It can be used to create automated proof.
 
+You can test it out on jupyter notebook [here](https://www.vipulcariappa.xyz/jupyterlite-deploy/lab/index.html?path=logic.ipynb).
+
 ## Installation
 
 Install using pip with the git url
